@@ -1,0 +1,923 @@
+/* ==========================================================================
+   THE SACRED HEBREW WEALTH & PARNASÁ ASSESSMENT — MYSTICAL SANCTUARY
+   Dedicated Institutional & Mystical Styling for the Abundance Diagnostic
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --mystic-bg-base: #04060C;
+  --mystic-bg-card: rgba(10, 15, 28, 0.9);
+  --mystic-bg-card-hover: rgba(18, 26, 48, 0.95);
+  
+  --mystic-gold: #D4AF37;
+  --mystic-gold-bright: #FFE082;
+  --mystic-gold-deep: #A07818;
+  --mystic-gold-glow: rgba(212, 175, 55, 0.35);
+
+  --mystic-cyan: #00E5FF;
+  --mystic-cyan-glow: rgba(0, 229, 255, 0.25);
+
+  --mystic-text-main: #F4EBE1;
+  --mystic-text-muted: #959CAE;
+  --mystic-text-gold: #F2D27A;
+
+  --mystic-border-gold: rgba(212, 175, 55, 0.35);
+  --mystic-border-glow: rgba(212, 175, 55, 0.65);
+  --mystic-border-subtle: rgba(255, 255, 255, 0.08);
+
+  --font-mystic-title: 'Cinzel', Georgia, serif;
+  --font-mystic-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-mystic-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a, a:visited {
+  color: inherit;
+  text-decoration: none;
+}
+
+body.mystic-quiz-page {
+  background-color: var(--mystic-bg-base);
+  color: var(--mystic-text-main);
+  font-family: var(--font-mystic-sans);
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 85% 85%, rgba(0, 229, 255, 0.05) 0%, transparent 50%),
+    linear-gradient(180deg, #030508 0%, #070B14 50%, #030508 100%);
+  background-attachment: fixed;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Canvas Particles */
+#particles-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   INSTITUTIONAL SACRED HEADER (SEPARATE FROM HOME BRANDING)
+   ========================================================================== */
+.mystic-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(4, 6, 12, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1.5px solid var(--mystic-border-gold);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(212, 175, 55, 0.12);
+  padding: 0 16px;
+}
+
+.mystic-header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (max-width: 480px) {
+  .mystic-header-inner {
+    height: 60px;
+  }
+}
+
+.mystic-institute-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.mystic-seal-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid var(--mystic-gold);
+  overflow: hidden;
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.4);
+  flex-shrink: 0;
+  background: #000;
+}
+
+.mystic-seal-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mystic-institute-text h1 {
+  font-family: var(--font-mystic-title);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #FFF !important;
+  line-height: 1.1;
+}
+
+.mystic-institute-text span {
+  font-family: var(--font-mystic-sans);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--mystic-gold) !important;
+  display: block;
+  margin-top: 2px;
+}
+
+.mystic-security-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 11.5px;
+  color: var(--mystic-text-gold);
+  font-weight: 600;
+}
+
+.pulse-dot-green {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2ECC71;
+  box-shadow: 0 0 8px #2ECC71;
+  animation: pulseGreen 1.8s infinite;
+}
+
+@keyframes pulseGreen {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+@media (max-width: 580px) {
+  .mystic-security-badge span.desktop-only {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   QUIZ MAIN CONTAINER
+   ========================================================================== */
+.mystic-container {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+  flex: 1;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* CONSECRATION NOTICE AT TOP */
+.consecration-notice {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(10, 15, 28, 0.95) 100%);
+  border: 1px solid var(--mystic-border-gold);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+.notice-icon {
+  font-size: 24px;
+  color: var(--mystic-gold);
+  flex-shrink: 0;
+}
+
+.notice-text h4 {
+  font-family: var(--font-mystic-title);
+  font-size: 0.92rem;
+  letter-spacing: 1px;
+  color: var(--mystic-gold-bright);
+  margin-bottom: 2px;
+}
+
+.notice-text p {
+  font-size: 12.5px;
+  color: var(--mystic-text-muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 480px) {
+  .consecration-notice {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .notice-text h4 {
+    font-size: 0.85rem;
+  }
+  .notice-text p {
+    font-size: 11.5px;
+  }
+}
+
+/* PROGRESS BAR */
+.quiz-progress-wrap {
+  margin-bottom: 22px;
+}
+
+.quiz-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--mystic-gold-bright);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.quiz-progress-track {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.quiz-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #A07818 0%, #D4AF37 50%, #00E5FF 100%);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.8);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   QUESTION SCREEN / CARD
+   ========================================================================== */
+.question-screen {
+  background: var(--mystic-bg-card);
+  border: 1.5px solid var(--mystic-border-gold);
+  border-radius: 20px;
+  padding: 40px 34px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(212, 175, 55, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: relative;
+  animation: cardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 580px) {
+  .question-screen {
+    padding: 24px 18px;
+    border-radius: 16px;
+  }
+}
+
+.q-eyebrow {
+  font-family: var(--font-mystic-sans);
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--mystic-gold-bright);
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.q-title {
+  font-family: var(--font-mystic-serif);
+  font-size: 2.15rem;
+  color: #FFF;
+  line-height: 1.25;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 580px) {
+  .q-title {
+    font-size: 1.55rem;
+    line-height: 1.3;
+  }
+}
+
+.q-helper {
+  font-size: 14px;
+  color: var(--mystic-text-muted);
+  line-height: 1.6;
+  margin-bottom: 26px;
+  font-style: italic;
+  border-left: 2px solid var(--mystic-gold);
+  padding-left: 12px;
+}
+
+@media (max-width: 580px) {
+  .q-helper {
+    font-size: 12.5px;
+    margin-bottom: 18px;
+  }
+}
+
+/* OPTIONS (GLOWING CARDS) */
+.q-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.q-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid var(--mystic-border-subtle);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  position: relative;
+  min-height: 56px;
+}
+
+@media (max-width: 580px) {
+  .q-option {
+    padding: 13px 14px;
+    gap: 10px;
+    min-height: 52px;
+  }
+}
+
+.q-option:hover {
+  background: rgba(212, 175, 55, 0.08);
+  border-color: var(--mystic-border-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(212, 175, 55, 0.15);
+}
+
+.q-option.selected {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.18) 0%, rgba(10, 15, 28, 0.95) 100%);
+  border-color: var(--mystic-gold);
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.3), inset 0 0 15px rgba(212, 175, 55, 0.1);
+}
+
+.opt-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--mystic-border-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.q-option.selected .opt-circle {
+  border-color: var(--mystic-gold-bright);
+  background: var(--mystic-gold);
+  box-shadow: 0 0 10px var(--mystic-gold-bright);
+}
+
+.q-option.selected .opt-circle::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0B0E14;
+}
+
+.opt-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ECE5DC;
+  line-height: 1.45;
+  flex: 1;
+}
+
+@media (max-width: 580px) {
+  .opt-text {
+    font-size: 13.5px;
+  }
+}
+
+/* INPUT TEXT / TEXTAREA */
+.q-input-text {
+  width: 100%;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid var(--mystic-border-gold);
+  border-radius: 12px;
+  color: #FFF;
+  font-family: var(--font-mystic-sans);
+  font-size: 16px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.q-input-text:focus {
+  border-color: var(--mystic-gold-bright);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.q-textarea {
+  width: 100%;
+  min-height: 130px;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid var(--mystic-border-gold);
+  border-radius: 12px;
+  color: #FFF;
+  font-family: var(--font-mystic-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.q-textarea:focus {
+  border-color: var(--mystic-gold-bright);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+/* DATE ROW */
+.date-row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.5fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .date-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.date-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--mystic-gold);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.date-select {
+  width: 100%;
+  padding: 16px;
+  background: rgba(14, 20, 35, 0.95);
+  border: 1.5px solid var(--mystic-border-gold);
+  border-radius: 12px;
+  color: #FFF;
+  font-family: var(--font-mystic-sans);
+  font-size: 15px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* SLIDER */
+.slider-wrap {
+  padding: 10px 0;
+}
+
+.slider-val-display {
+  font-family: var(--font-mystic-serif);
+  font-size: 1.8rem;
+  color: var(--mystic-gold-bright);
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+
+.slider-track-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.slider-input {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+}
+
+.slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--mystic-gold);
+  cursor: pointer;
+  box-shadow: 0 0 15px var(--mystic-gold-bright);
+  border: 2px solid #FFF;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--mystic-text-muted);
+}
+
+/* ==========================================================================
+   QUIZ NAVIGATION ACTION BUTTONS
+   ========================================================================== */
+.q-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.btn-back {
+  background: transparent;
+  border: none;
+  color: var(--mystic-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  padding: 14px 20px;
+  transition: color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-back:hover {
+  color: var(--mystic-gold);
+}
+
+.btn-continue {
+  padding: 16px 36px;
+  background: linear-gradient(135deg, #F3D063 0%, #D4AF37 50%, #B88E18 100%);
+  color: #0B0E14;
+  font-family: var(--font-mystic-sans);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: none;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.45);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 200px;
+  text-align: center;
+}
+
+.btn-continue:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(212, 175, 55, 0.65);
+}
+
+.btn-continue:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: #666;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .q-nav {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+  .btn-continue {
+    width: 100%;
+    padding: 16px;
+  }
+  .btn-back {
+    width: 100%;
+    justify-content: center;
+    padding: 8px;
+  }
+}
+
+/* ==========================================================================
+   SACRED COMPUTATION SCREEN (THE 22 PATHS)
+   ========================================================================== */
+.computation-screen {
+  display: none;
+  text-align: center;
+  padding: 50px 16px;
+  animation: cardIn 0.5s ease-out;
+}
+
+.computation-screen.active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sacred-seal-orb {
+  width: 88px;
+  height: 88px;
+  position: relative;
+  margin: 0 auto 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orb-ring-outer {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px dashed var(--mystic-gold);
+  animation: spinSlow 18s linear infinite;
+}
+
+.orb-ring-inner {
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--mystic-cyan);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+  animation: spinReverse 12s linear infinite;
+}
+
+.orb-symbol {
+  font-size: 32px;
+  color: var(--mystic-gold-bright);
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.comp-headline {
+  font-family: var(--font-mystic-serif);
+  font-size: 2.2rem;
+  color: #FFF;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.comp-sub {
+  font-size: 14.5px;
+  color: var(--mystic-text-muted);
+  max-width: 580px;
+  margin: 0 auto 32px;
+  line-height: 1.6;
+}
+
+.comp-steps {
+  width: 100%;
+  max-width: 540px;
+  background: var(--mystic-bg-card);
+  border: 1px solid var(--mystic-border-gold);
+  border-radius: 16px;
+  padding: 22px 20px;
+  text-align: left;
+}
+
+.comp-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13.5px;
+  color: #666;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--mystic-border-subtle);
+  transition: all 0.3s;
+}
+
+.comp-step:last-child {
+  border-bottom: none;
+}
+
+.comp-step.active {
+  color: var(--mystic-gold-bright);
+  font-weight: 700;
+}
+
+.comp-step.done {
+  color: #2ECC71;
+}
+
+.step-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.comp-step.active .step-check {
+  border-color: var(--mystic-gold);
+  box-shadow: 0 0 10px var(--mystic-gold);
+}
+
+.comp-step.done .step-check {
+  border-color: #2ECC71;
+  background: #2ECC71;
+  color: #000;
+}
+.comp-step.done .step-check::after {
+  content: "✓";
+}
+
+/* ==========================================================================
+   EMAIL GATE SCREEN
+   ========================================================================== */
+.email-screen {
+  display: none;
+  animation: cardIn 0.4s ease-out;
+}
+
+.email-screen.active {
+  display: block;
+}
+
+.email-card {
+  background: var(--mystic-bg-card);
+  border: 1.5px solid var(--mystic-border-gold);
+  border-radius: 20px;
+  padding: 44px 34px;
+  text-align: center;
+  max-width: 620px;
+  margin: 0 auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(212, 175, 55, 0.2);
+}
+
+@media (max-width: 580px) {
+  .email-card {
+    padding: 26px 18px;
+  }
+}
+
+.email-rabbi-thumb {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  border: 2px solid var(--mystic-gold);
+  margin: 0 auto 18px;
+  overflow: hidden;
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.4);
+}
+
+.email-rabbi-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.email-headline {
+  font-family: var(--font-mystic-serif);
+  font-size: 2.1rem;
+  color: #FFF;
+  margin-bottom: 8px;
+  line-height: 1.25;
+}
+
+@media (max-width: 580px) {
+  .email-headline {
+    font-size: 1.6rem;
+  }
+}
+
+.email-sub {
+  font-size: 14.5px;
+  color: var(--mystic-text-muted);
+  line-height: 1.65;
+  margin-bottom: 24px;
+}
+
+.email-input {
+  width: 100%;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid var(--mystic-border-gold);
+  border-radius: 12px;
+  color: #FFF;
+  font-family: var(--font-mystic-sans);
+  font-size: 16px;
+  text-align: center;
+  outline: none;
+  margin-bottom: 16px;
+  transition: all 0.2s;
+}
+
+.email-input:focus {
+  border-color: var(--mystic-gold-bright);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.email-btn {
+  width: 100%;
+  padding: 17px;
+  background: linear-gradient(135deg, #F3D063 0%, #D4AF37 50%, #B88E18 100%);
+  color: #0B0E14;
+  font-family: var(--font-mystic-sans);
+  font-size: 16px;
+  font-weight: 800;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.45);
+  transition: all 0.2s;
+}
+
+.email-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(212, 175, 55, 0.65);
+}
+
+.email-disclaimer {
+  font-size: 11.5px;
+  color: #777;
+  margin-top: 14px;
+}
+
+/* ULTRA MOBILE REFINEMENT (320px - 480px) */
+@media (max-width: 480px) {
+  .mystic-header {
+    padding: 0 10px;
+  }
+  .mystic-header-inner {
+    height: 58px;
+  }
+  .mystic-institute-brand {
+    gap: 8px;
+  }
+  .mystic-seal-badge {
+    width: 34px;
+    height: 34px;
+  }
+  .mystic-institute-text h1 {
+    font-size: 0.82rem !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap;
+  }
+  .mystic-institute-text span {
+    font-size: 7.5px !important;
+    letter-spacing: 0.8px !important;
+    white-space: nowrap;
+  }
+  .mystic-security-badge {
+    padding: 3px 8px !important;
+    font-size: 9px !important;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .mystic-header {
+    padding: 0 8px;
+  }
+  .mystic-institute-text h1 {
+    font-size: 0.75rem !important;
+  }
+  .mystic-security-badge {
+    display: none !important;
+  }
+}

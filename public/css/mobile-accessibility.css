@@ -1,0 +1,148 @@
+/* Shared reading and touch refinements. Loaded last; keeps the Antigravity theme. */
+:root { --text-muted: #bfc1ca; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+input, textarea, select { font-size: max(1rem, 16px); }
+button, input, textarea, select, summary, a { touch-action: manipulation; }
+:is(button, a, input, textarea, select, summary):focus-visible {
+  outline: 3px solid #f3d77b; outline-offset: 4px;
+}
+audio, video { max-width: 100%; }
+.mystic-container, .result-container, .rd-document { min-width: 0; }
+.result-container :is(p, h1, h2, h3, summary, a), .q-title, .opt-text {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  body { background-attachment: scroll; }
+  .site-header { position: relative !important; top: auto !important; }
+  .header-inner { height: auto !important; min-height: 76px; gap: 12px; padding-top: 12px; padding-bottom: 12px; }
+  .header-inner .brand-wrap { flex: 1 1 auto; min-width: 0; gap: 10px; }
+  .header-inner .brand-logo-img { width: 38px; height: 38px; flex-shrink: 0; }
+  .header-inner .brand-text h1 { font-size: 19px !important; line-height: 1.3; white-space: normal; }
+  .header-inner .brand-text span { font-size: 13px !important; line-height: 1.45; letter-spacing: 0; white-space: normal; }
+  .header-inner > .nav-cta { flex: 0 0 auto; min-height: 48px; padding: 12px 15px; font-size: 16px !important; line-height: 1.5; }
+  .free-testing-notice { font-size: 15px !important; line-height: 1.5 !important; padding: 10px 16px !important; }
+  .hero-section { padding-top: 30px !important; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .hero-grid > *, .hero-copy { min-width: 0; max-width: 100%; }
+  .hero-copy .live-viewers-pill { display: none; }
+  .hero-badge { font-size: 14px !important; line-height: 1.5; letter-spacing: 1px; margin-bottom: 20px; white-space: normal; }
+  .hero-sub { font-size: 18px !important; line-height: 1.7 !important; color: #d2d3db; }
+  .hero-actions { gap: 12px; margin-top: 24px; }
+  .hero-actions a { font-size: 18px !important; min-height: 56px; padding: 14px 18px !important; line-height: 1.5; white-space: normal; }
+  .hero-trust { gap: 12px; }
+  .trust-item { font-size: 16px !important; line-height: 1.6; }
+  .rabbi-desc { font-size: 15px !important; letter-spacing: .6px; }
+  :is(.section-sub, .section-intro, .proof-detail, .pillar-card p, .bridge-copy p,
+      .covenant-text-wrap p, .book-desc, .reading-option p, .reading-option li,
+      .faq-answer, .footer-desc, .bundle-info p) {
+    font-size: 18px !important; line-height: 1.7 !important;
+  }
+  :is(.section-eyebrow, .option-step, .pillars-kicker, .option-eyebrow,
+      .book-author, .book-feature-list li, .book-features li, .upgrade-note,
+      .options-footnote, .covenant-photo-caption, .footer-bottom, .footer-links a,
+      .rd-preview-note, .rd-support-footer, .reading-source) {
+    font-size: 16px !important; line-height: 1.65 !important; letter-spacing: .4px;
+  }
+  .covenant-photo-caption { color: #bfc1ca; }
+  .social-proof .proof-detail, .narrative-card p, .bundle-card p, #bundle-card p { font-size: 18px !important; line-height: 1.7 !important; }
+  .footer-copy, .hero-portrait-overlay .rabbi-desc { font-size: 16px !important; line-height: 1.6; }
+  :is(.btn-primary, .btn-secondary, .book-buy-btn, .reading-option > a,
+      .btn-unlock, .funnel-secondary, .btn-continue, .btn-back, .email-btn) {
+    min-height: 52px; white-space: normal; line-height: 1.5;
+  }
+  .footer-links a, .rd-support-footer a, .funnel-links a { display: inline-flex; align-items: center; min-height: 44px; }
+  .hero-image-wrap { max-width: 380px; margin-inline: auto; width: 100%; }
+  .hero-portrait-card { max-height: none; }
+  .section-title { font-size: clamp(28px, 6.5vw, 38px) !important; line-height: 1.25 !important; }
+  .rd-document p, .rd-document li { font-size: 18px; line-height: 1.75; }
+  .rd-document nav a { display: inline-flex; min-height: 44px; align-items: center; }
+
+  /* Questionnaire: readable labels and a stable single-column flow. */
+  .mystic-header { padding: 0 16px; position: relative; }
+  .mystic-header-inner { height: auto !important; min-height: 88px; padding: 14px 0; flex-wrap: wrap; gap: 12px; }
+  .mystic-institute-brand { min-width: 0; flex: 1 1 240px; }
+  .mystic-institute-text { min-width: 0; }
+  .mystic-institute-text h1 { font-size: 17px !important; line-height: 1.4 !important; white-space: normal !important; letter-spacing: .4px !important; }
+  .mystic-institute-text span { font-size: 14px !important; line-height: 1.5; white-space: normal !important; letter-spacing: 0 !important; }
+  .mystic-security-badge { font-size: 14px !important; padding: 6px 12px !important; }
+  .mystic-container { width: 100%; padding: 24px 16px 48px; }
+  .mystic-quiz-page { overflow-anchor: none; }
+  .consecration-notice { padding: 18px; margin-bottom: 24px; }
+  .mystic-quiz-page .consecration-notice { display: none; }
+  .email-rabbi-thumb { width: 76px; height: 76px; margin-bottom: 18px; }
+  .quiz-progress-wrap { scroll-margin-top: 16px; }
+  .consecration-notice .notice-text p { font-size: 17px; line-height: 1.65; }
+  .notice-text h4 { font-size: 19px; line-height: 1.5; }
+  .quiz-progress-meta { font-size: 16px; line-height: 1.6; }
+  .question-screen { padding: 26px 20px; }
+  .q-title { font-size: clamp(28px, 6vw, 36px) !important; line-height: 1.25; }
+  .q-eyebrow { font-size: 14px; line-height: 1.65; letter-spacing: .7px; }
+  .q-helper { font-size: 18px !important; line-height: 1.65; color: #c8cbd4; }
+  .q-options { gap: 12px; }
+  .q-option { min-height: 60px; padding: 16px; gap: 14px; }
+  .q-option input { flex: 0 0 24px; width: 24px; height: 24px; margin: 0; }
+  .q-option .opt-text { font-size: 18px !important; line-height: 1.55; }
+  .q-textarea, .email-input { font-size: 18px !important; line-height: 1.65; }
+  .email-input { min-height: 56px; }
+  .email-card { width: 100%; padding: 28px 20px; }
+  .email-headline { font-size: 32px; line-height: 1.3; }
+  .email-sub { font-size: 18px; line-height: 1.7; }
+  #enrollForm > label { display: block; text-align: left; font-size: 18px; line-height: 1.6; }
+  #enrollForm > label.funnel-check { display: flex; }
+  .email-disclaimer, .funnel-note { font-size: 16px !important; line-height: 1.65 !important; color: #bec2cb !important; }
+  .funnel-check { font-size: 17px; line-height: 1.6; min-height: 48px; align-items: flex-start; }
+  .funnel-check input { width: 24px; height: 24px; flex: 0 0 24px; margin-top: 3px; }
+  .q-nav { gap: 12px; flex-wrap: wrap; }
+  .q-nav button { font-size: 18px; }
+  #quizError { font-size: 18px; line-height: 1.65; }
+
+  /* Results: comfortable long reading, no cramped nested cards. */
+  .result-container { padding: 24px 16px 56px; }
+  .result-container p, .letter-body p, .reading-summary { font-size: 18px !important; line-height: 1.75 !important; }
+  .reading-personal-hero .result-headline { font-size: clamp(30px, 7vw, 40px); line-height: 1.25; }
+  .reading-topline { flex-wrap: wrap; align-items: center; }
+  .reading-topline .cert-badge { font-size: 14px; letter-spacing: .6px; }
+  .reading-save, .reading-nav a, .reading-byline { font-size: 17px; line-height: 1.65; }
+  .reading-save, .reading-nav a { min-height: 44px; display: inline-flex; align-items: center; }
+  .reading-context span { font-size: 16px; line-height: 1.6; }
+  .chapter-index { grid-template-columns: 1fr; }
+  .chapter-index a { font-size: 17px; line-height: 1.65; padding: 14px; }
+  .reading-chapter summary { font-size: 24px; line-height: 1.4; padding: 18px 14px; gap: 10px; }
+  .chapter-number { flex-shrink: 0; white-space: nowrap; }
+  .reading-chapter .letter-body { padding: 0 18px 18px; }
+  .pastoral-letter, .card-vessel { padding: 24px 18px; }
+  .plan-day { padding: 16px; }
+  .plan-day summary { font-size: 19px; line-height: 1.55; }
+  .plan-day summary span { font-size: 16px; }
+  .result-container .funnel-secondary { margin-right: 0; max-width: 100%; font-size: 17px; text-align: center; }
+  .reading-access, .reading-method > summary { font-size: 16px; line-height: 1.65; }
+  #funnelStatus:not(:empty) { max-width: calc(100% - 24px); left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); font-size: 17px; line-height: 1.6; }
+  .funnel-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+}
+
+@media (max-width: 600px) {
+  .hero-headline { font-size: clamp(32px, 8.2vw, 40px) !important; line-height: 1.22 !important; }
+  .hero-actions { flex-direction: column; }
+  .hero-actions a { width: 100%; }
+  .hero-trust { display: grid; grid-template-columns: minmax(0, 1fr); text-align: left; justify-items: start; }
+  .social-proof-grid { grid-template-columns: 1fr !important; }
+  .proof-item { padding: 22px 12px; }
+  .proof-detail { max-width: 34ch; }
+  .q-nav { flex-direction: column-reverse; align-items: stretch; }
+  .q-nav button { width: 100%; }
+  .result-container .card-vessel { padding: 24px 14px; }
+  .funnel-offers { grid-template-columns: minmax(0, 1fr); }
+  .reading-option { min-width: 0; }
+  .mystic-security-badge { display: none !important; }
+}
+@media (max-width: 380px) {
+  .header-inner .brand-text span { display: none; }
+  .question-screen { padding: 24px 16px; }
+  .q-option { padding: 14px 12px; }
+  .result-container .plan-day { padding: 14px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  #particles-canvas { display: none; }
+}

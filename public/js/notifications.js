@@ -1,0 +1,1 @@
+/* Purchase notifications require verified events. No simulated activity. */

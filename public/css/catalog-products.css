@@ -1,0 +1,205 @@
+/* The existing Antigravity palette and book covers, organized into a complete library. */
+.complete-library {position:relative;z-index:1;padding-bottom:50px}
+.library-hero {padding-top:64px;padding-bottom:42px;text-align:center;max-width:920px}
+.library-hero h1 {font-family:var(--font-serif,Georgia,serif);font-size:clamp(36px,5vw,62px);line-height:1.15;margin:16px 0 24px}
+.library-hero>p {font-size:19px;line-height:1.7;color:var(--text-muted,#ccc);max-width:740px;margin:0 auto}
+.library-facts {display:flex;justify-content:center;gap:32px;margin:32px auto 0;color:var(--text-muted,#ccc);flex-wrap:wrap}
+.library-facts strong {font-size:24px;color:var(--gold-light,#FFD866);margin-right:7px}
+.library-controls {display:flex;gap:22px;align-items:end;padding-top:22px;padding-bottom:28px;border-bottom:1px solid rgba(212,175,55,.2)}
+.library-controls label {display:flex;flex-direction:column;gap:9px;font-size:15px;color:var(--gold-light,#FFD866);flex:1}
+.library-controls label:first-child {flex:2}
+.library-controls input,.library-controls select {min-height:52px;width:100%;border:1px solid rgba(212,175,55,.35);background:#111622;color:#f3ecdc;padding:12px 16px;border-radius:8px;font:inherit;font-size:17px}
+.library-controls p {margin:0 0 12px;white-space:nowrap;color:var(--text-muted,#ccc)}
+.library-category {padding:48px 0 12px}
+.library-category-heading {display:flex;align-items:center;gap:18px;margin-bottom:28px}
+.library-category-heading h2 {font-family:var(--font-serif,Georgia,serif);font-size:30px;color:var(--gold-light,#FFD866)}
+.library-category .books-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+.library-card {display:flex;flex-direction:column;min-width:0;padding:24px;position:relative}
+.library-card .book-cover-wrap {height:300px;width:100%;margin:0 0 24px;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse,rgba(212,175,55,.1),transparent 70%);overflow:visible}
+.library-card .book-cover-wrap img {max-height:100%;max-width:100%;width:auto;height:auto;object-fit:contain;box-shadow:8px 14px 28px rgba(0,0,0,.45);border-radius:3px;transition:transform .25s}
+.library-card .book-cover-wrap:hover img {transform:translateY(-5px) rotate(-1deg)}
+.card-badge-container {display:flex;justify-content:flex-start;align-items:center;margin-bottom:12px;min-height:26px}
+.card-popularity-badge {display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:999px;font-family:var(--font-ui,var(--font-sans,system-ui,sans-serif));font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;line-height:1.2}
+.badge-rank-1-popular {background:linear-gradient(135deg,#FFE066 0%,#D4AF37 100%);color:#0B0E14;box-shadow:0 0 16px rgba(212,175,55,.45);border:1px solid rgba(255,255,255,.4)}
+.badge-rank-1-bestseller {background:linear-gradient(135deg,#FF5722 0%,#D32F2F 100%);color:#FFFFFF;box-shadow:0 0 16px rgba(231,76,60,.45);border:1px solid rgba(255,255,255,.3)}
+.badge-rank-2-popular {background:linear-gradient(135deg,#F3E0A2 0%,#C99700 100%);color:#0B0E14;box-shadow:0 0 12px rgba(212,175,55,.3)}
+.badge-rank-2-bestseller {background:linear-gradient(135deg,#2ECC71 0%,#1B7A43 100%);color:#FFFFFF;box-shadow:0 0 12px rgba(46,204,113,.35)}
+.badge-rank-3-popular {background:linear-gradient(135deg,#E67E22 0%,#B8860B 100%);color:#FFFFFF;box-shadow:0 0 12px rgba(230,126,34,.35)}
+.badge-standard {background:rgba(212,175,55,.1);color:var(--gold-light,#FFD866);border:1px solid rgba(212,175,55,.3);font-weight:700}
+.library-card.card-featured-gold {border-color:var(--gold-primary,#D4AF37);background:linear-gradient(180deg,#181F2D 0%,#101520 100%);box-shadow:0 10px 35px rgba(212,175,55,.16)}
+.library-card.card-featured-red {border-color:rgba(231,76,60,.7);background:linear-gradient(180deg,#1D171E 0%,#131016 100%);box-shadow:0 10px 35px rgba(231,76,60,.14)}
+.library-card .book-tag {position:static;display:block;line-height:1.5;min-height:23px;margin:0 0 10px;font-size:13px;white-space:normal}
+.library-card .book-name {font-size:24px;line-height:1.25;margin-bottom:16px;min-height:60px}
+.library-card .book-name a {color:inherit}
+.library-card .book-desc {font-size:16px;line-height:1.65;margin:0 0 20px;flex:1}
+.catalog-edition {font-size:14px;color:var(--text-muted,#ccc);margin:0 0 12px}
+.catalog-currency {font-size:13px;color:var(--text-muted,#ccc)}
+.library-card .btn-buy {margin-top:8px;text-align:center;font-size:14px;min-height:52px;display:flex;align-items:center;justify-content:center}
+.library-card[hidden],.library-category[hidden],#library-empty[hidden] {display:none!important}
+#library-empty {padding:60px 20px;text-align:center;font-size:20px;color:var(--gold-light,#FFD866)}
+.library-guidance {text-align:center;padding-top:70px;padding-bottom:30px;max-width:760px}
+.library-guidance h2 {font-family:var(--font-serif,Georgia,serif);font-size:32px}
+.library-guidance p {font-size:18px;line-height:1.7;color:var(--text-muted,#ccc);margin:20px 0 30px}
+.catalog-product-hero {padding-top:100px}
+.product-breadcrumb {max-width:1160px;margin:0 auto 36px;padding:0 24px;font-family:var(--font-ui,Arial);font-size:15px}
+.catalog-product-hero .product-image-3d img {object-fit:contain;max-height:630px;width:auto;max-width:100%;margin:auto}
+.catalog-product-hero .product-info .hero-badge {display:inline-flex;position:static;white-space:normal;font-size:12px;line-height:1.5;max-width:100%;margin-bottom:15px}
+.product-author {font-family:var(--font-ui,Arial);font-size:15px;color:var(--gold-light);margin:4px 0 14px}
+.catalog-product-hero h1 {font-size:clamp(32px,3.5vw,48px);line-height:1.16}
+.catalog-product-hero .product-subtitle {font-size:22px;line-height:1.5;color:var(--gold-light);margin:22px 0 16px}
+.product-description {font-size:17px;line-height:1.75;margin-bottom:24px;color:var(--text-body)}
+.product-currency {font:14px var(--font-ui,Arial);color:var(--text-dim);margin-left:12px}
+.catalog-product-hero .btn-buy {width:100%;justify-content:center}
+.checkout-preview-note {font:13px/1.6 var(--font-ui,Arial);color:#bab0a1;margin:14px 0}
+.book-overview {background:linear-gradient(110deg,rgba(212,175,55,.055),rgba(255,255,255,.015));border-block:1px solid var(--border);padding:60px 20px}
+.book-overview .container {max-width:920px}
+.book-overview h2 {font-size:34px;margin:15px 0 22px}
+.book-overview p {font-size:19px;line-height:1.8}
+.section-eyebrow {font:12px var(--font-ui,Arial);letter-spacing:2px;color:var(--gold-light);text-transform:uppercase}
+.section-intro {text-align:center;max-width:720px;margin:12px auto 30px;color:var(--text-dim);font-size:16px}
+.laws-grid .law-card h3 {font-size:21px;line-height:1.4}
+.book-choice {padding:60px 0;background:rgba(212,175,55,.045);border-block:1px solid var(--border)}
+.book-choice>.container {display:grid;grid-template-columns:1fr 1.5fr;gap:60px;max-width:1040px}
+.book-choice h2 {font-size:32px;margin-top:16px}
+.book-choice p {font-size:17px;line-height:1.8;margin-bottom:16px}
+.reader-feedback {padding:50px 0}
+.reader-feedback>.container {display:flex;justify-content:space-between;align-items:center;gap:40px;max-width:1040px}
+.reader-feedback h2 {font-size:28px;margin:10px 0 14px}
+.reader-feedback p {max-width:680px;font-size:16px;line-height:1.75;color:var(--text-dim)}
+.reader-feedback .btn-outline {flex-shrink:0;white-space:nowrap;font-size:14px}
+.product-final-cta h2 {max-width:780px;margin:0 auto 30px;font-size:34px;line-height:1.4}
+.related-reading {padding:30px 0 70px}
+.related-reading>.container {max-width:1040px}
+.related-reading h2 {font-size:29px;margin-bottom:24px}
+.related-reading>.container>div {display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.related-book {display:flex;gap:18px;align-items:center;border:1px solid var(--border-gold);background:var(--bg-card);padding:18px;border-radius:10px;min-width:0}
+.related-book>img {width:62px;height:90px;object-fit:contain;flex-shrink:0}
+.related-book>span:nth-child(2) {flex:1;min-width:0}
+.related-book strong {display:block;font:17px/1.4 var(--font-heading,Georgia);color:var(--text-primary)}
+.related-book small {display:block;margin-top:8px;font:12px/1.5 var(--font-ui,Arial);color:var(--text-dim)}
+.verified-reader-grid {display:grid!important;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;margin-bottom:40px}
+.verified-reader-card {border:1px solid var(--border-gold);padding:24px;background:var(--bg-card);border-radius:12px}
+.verified-reader-card img {width:56px;height:56px;border-radius:50%;object-fit:cover;margin-bottom:14px}
+.verified-reader-card h3 {font-size:19px;margin-bottom:12px}
+.verified-reader-card small {display:block;margin-top:18px;color:var(--gold-light)}
+:focus-visible {outline:3px solid var(--gold-light,#FFD866);outline-offset:4px}
+@media(max-width:1000px){.library-category .books-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.book-choice>.container{gap:32px}.reader-feedback>.container{align-items:flex-start;flex-direction:column}}
+@media(max-width:650px){.library-hero{padding-top:38px}.library-facts{gap:15px}.library-controls{align-items:stretch;flex-direction:column;gap:15px}.library-controls p{margin:0}.library-category .books-grid{grid-template-columns:1fr}.library-card .book-cover-wrap{height:320px}.library-card .book-name{min-height:0}.library-category-heading h2{font-size:25px}.book-choice>.container{grid-template-columns:1fr;gap:24px}.catalog-product-hero{padding-top:85px}.catalog-product-hero .product-image-3d img{max-height:410px}.book-overview{padding:42px 0}.book-overview h2{font-size:29px}.book-overview p{font-size:17px}.related-reading>.container>div{grid-template-columns:1fr}.reader-feedback .btn-outline{white-space:normal}.product-final-cta h2{font-size:28px}.product-breadcrumb{margin-bottom:24px}}
+@media(prefers-reduced-motion:reduce){.library-card .book-cover-wrap img{transition:none}.library-card .book-cover-wrap:hover img{transform:none}}
+/* Same brand, typography and slate palette as the original homepage. */
+body[data-product-id] {--bg-primary:#0B0E14;--bg-secondary:#101722;--bg-card:#131822;--font-heading:'Fraunces',Georgia,serif;--font-body:'Inter',Arial,sans-serif;--font-ui:'Inter',Arial,sans-serif;--text-body:#c3c7cd;--text-primary:#F4EBE1;--text-dim:#a7aab3;--gold:#D4AF37;--gold-light:#F3E0A2;--border:#28313f;background-color:#0B0E14;font-family:var(--font-sans)}
+body[data-product-id] .catalog-product-hero {padding-top:40px}
+body[data-product-id] .product-breadcrumb {padding-inline:0}
+body[data-product-id] .book-overview,body[data-product-id] .book-choice {background:rgba(19,24,34,.8)}
+body[data-product-id] .product-info h1 {font-family:var(--font-serif)}
+body[data-product-id] .product-info .btn-buy,body[data-product-id] .product-final-cta .btn-buy {background:linear-gradient(135deg,#f3d063,#d4af37,#b88e18);color:#0b0e14;font-family:var(--font-sans);border-radius:999px}
+body[data-product-id] .product-final-cta .btn-buy {display:inline-flex;padding:18px 36px;align-items:center;justify-content:center}
+body[data-product-id] .product-image-3d {transform:perspective(1100px) rotateY(-7deg);filter:drop-shadow(15px 24px 35px #0009)}
+@media(max-width:650px){body[data-product-id] .catalog-product-hero{padding-top:25px}body[data-product-id] .product-breadcrumb{padding-inline:20px}body[data-product-id] .product-hero-grid{gap:32px}body[data-product-id] .product-image-3d{transform:none}}
+/* Mobile reading and touch refinements for the library and its twelve books.
+   Keep the Antigravity presentation; let text reflow without hiding overflow. */
+.complete-library {--text-muted:#b7bec9}
+.library-controls>*,.library-category-heading>*,.product-hero-grid>*,
+.book-choice>.container>*,.related-reading>.container>div>* {min-width:0}
+.library-card .book-name,.library-card .book-desc,.library-category-heading h2,
+.product-info h1,.product-subtitle,.product-description,.book-overview p,
+.law-card h3,.related-book strong,.related-book small {overflow-wrap:anywhere;word-break:normal}
+.library-card .book-desc,.product-description,.book-choice p,
+.reader-feedback p,body[data-product-id] .who-list li {font-size:18px;line-height:1.75}
+.library-card .book-tag,.catalog-edition,.product-author,
+.catalog-product-hero .mini-badge,.checkout-preview-note {font-size:15px;line-height:1.6}
+.library-card .btn-buy,body[data-product-id] .btn-buy,
+.reader-feedback .btn-outline,.library-guidance .btn-primary {
+ min-height:52px;max-width:100%;white-space:normal;text-align:center;
+ font-size:16px;line-height:1.4;letter-spacing:.3px;touch-action:manipulation
+}
+.product-breadcrumb a {display:inline-flex;align-items:center;min-height:44px;padding-block:8px}
+.library-controls label {font-size:17px}
+.library-controls input,.library-controls select {font-size:18px;max-width:100%}
+.library-controls p {white-space:normal;line-height:1.5}
+.card-popularity-badge {font-size:13px;line-height:1.4;white-space:normal;letter-spacing:.3px;max-width:100%}
+.card-badge-container {height:auto;min-height:30px}
+.library-facts span {line-height:1.6}
+.product-price {flex-wrap:wrap;row-gap:4px}
+.product-currency {font-size:15px;line-height:1.5}
+.related-book {min-height:108px}
+.related-book small {font-size:14px;line-height:1.6}
+.related-book strong {font-size:18px}
+.catalog-product-hero .mini-badges {gap:8px;flex-direction:row;align-items:center}
+body[data-product-id] .section-intro {font-size:18px;line-height:1.7}
+body[data-product-id] .laws-grid {grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:1000px){body[data-product-id] .laws-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:768px){
+ body[data-product-id] .product-hero-grid{grid-template-columns:minmax(0,1fr)}
+ body[data-product-id] .product-description{text-align:left}
+ body[data-product-id] .laws-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:650px){
+ .complete-library>.container,.complete-library .library-category,.complete-library .library-controls{min-width:0}
+ .complete-library>.container{padding-inline:20px}
+ .library-hero{padding-bottom:28px}
+ .library-hero h1{font-size:clamp(31px,8vw,40px);line-height:1.2}
+ .library-hero>p{font-size:18px;line-height:1.75;text-align:left}
+ .library-facts{display:grid;grid-template-columns:1fr;gap:8px;text-align:left;margin-top:24px}
+ .library-facts span{font-size:16px}
+ .library-facts strong{display:inline-block;min-width:35px}
+ .library-controls{padding-top:16px;padding-bottom:24px}
+ .library-controls input,.library-controls select{min-height:54px}
+ .library-category{padding-top:34px}
+ .library-category-heading{gap:12px;align-items:baseline;margin-bottom:20px}
+ .library-category-heading h2{font-size:clamp(24px,6.5vw,29px);line-height:1.3}
+ .library-card{padding:20px}
+ .library-card .book-cover-wrap{height:clamp(225px,72vw,300px);margin-bottom:22px}
+ .library-card .book-name{font-size:26px;line-height:1.3}
+ .library-card .btn-buy{padding:16px 12px}
+ .catalog-currency{font-size:15px}
+ .library-guidance{padding-top:45px}
+ .library-guidance h2{font-size:29px;line-height:1.3}
+ .library-guidance .btn-primary{font-size:17px!important}
+ body[data-product-id] .catalog-product-hero{padding-inline:20px;padding-bottom:44px}
+ body[data-product-id] .product-breadcrumb{padding-inline:0;margin-bottom:18px;text-align:left}
+ body[data-product-id] .product-hero-grid{gap:28px}
+ body[data-product-id] .product-image-wrapper{min-width:0;max-width:100%}
+ body[data-product-id] .catalog-product-hero .product-image-3d img{max-height:285px;max-width:100%}
+ body[data-product-id] .product-info .hero-badge{font-size:14px;letter-spacing:.4px;padding:8px 12px;line-height:1.5}
+ body[data-product-id] .product-info h1{font-size:clamp(29px,8vw,36px);line-height:1.22}
+ body[data-product-id] .product-subtitle{font-size:21px;line-height:1.55;font-style:normal}
+ body[data-product-id] .product-info .btn-buy{padding:17px 18px}
+ body[data-product-id] .product-price{margin-bottom:18px;gap:8px}
+ body[data-product-id] .checkout-preview-note{font-size:15px;line-height:1.65}
+ body[data-product-id] .book-overview .container,
+ body[data-product-id] .book-choice .container,
+ body[data-product-id] .reader-feedback .container,
+ body[data-product-id] .related-reading .container{padding-inline:20px}
+ body[data-product-id] .book-overview p{font-size:18px;line-height:1.8}
+ body[data-product-id] .laws-section,
+ body[data-product-id] .who-section,
+ body[data-product-id] .product-final-cta{padding:46px 20px}
+ body[data-product-id] .laws-section h2,
+ body[data-product-id] .who-section h2{font-size:29px;line-height:1.3;margin-bottom:22px}
+ body[data-product-id] .laws-grid{gap:14px}
+ body[data-product-id] .law-card{padding:24px 20px}
+ body[data-product-id] .law-card h3{font-size:22px;line-height:1.4;padding-right:9px}
+ body[data-product-id] .who-list li{padding-left:28px}
+ body[data-product-id] .book-choice{padding:42px 0}
+ body[data-product-id] .reader-feedback{padding:42px 0}
+ body[data-product-id] .reader-feedback>.container{gap:24px}
+ body[data-product-id] .reader-feedback .btn-outline{width:100%;padding:16px 18px}
+ body[data-product-id] .product-final-cta .container{padding:0}
+ body[data-product-id] .product-final-cta .btn-buy{width:100%;padding:17px 20px}
+ body[data-product-id] .product-final-cta .alt-link{font-size:17px;line-height:1.7}
+ body[data-product-id] .product-final-cta .alt-link a{display:inline-flex;align-items:center;min-height:44px;padding-block:8px}
+ .related-reading{padding-bottom:46px}
+ .related-book{gap:12px;padding:16px}
+ .related-book>img{width:52px;height:78px}
+ .related-book>span:last-child{flex:0 0 14px}
+ .verified-reader-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(hover:none){
+ .library-card .book-cover-wrap:hover img,.library-card:hover,
+ body[data-product-id] .btn-buy:hover,.related-book:hover{transform:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .library-card,.library-card .btn-buy,body[data-product-id] .btn-buy,
+ body[data-product-id] .product-image-3d{animation:none!important;transition:none!important}
+}

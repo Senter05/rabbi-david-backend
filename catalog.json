@@ -1,0 +1,434 @@
+[
+  {
+    "id": "morning",
+    "title": "The Rabbi's Morning Wealth Blessing",
+    "author": "Rabbi David",
+    "price": 27,
+    "currency": "USD",
+    "pages": 212,
+    "category": "Prayer & daily practice",
+    "description": "Explore morning prayer, gratitude and the meaning of everyday work. With Hebrew terms and scripture reflections, this devotional offers ideas to return to before a busy day or during a quiet moment.",
+    "goals": [
+      "calm",
+      "direction"
+    ],
+    "cover": "/images/ebook-prayer-cover.png",
+    "sample": [
+      "The Mystery of Parnasá Tová\nThe Altar of the Kitchen Table\nThe Moses Secret: Psalm 90:17\nThe Currency of Bitachon\nShalom Bayit: Peace in the Home\nThe 5 Sacred Business Standards of the Talmud"
+    ],
+    "format": "Digital PDF",
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "language": "English",
+    "subtitle": "Give your morning a calmer, more meaningful beginning.",
+    "overview": "A substantial devotional edition that connects prayer with the work of your hands, the atmosphere of your home and the choices of an ordinary day. Read a little at a time, reflect on the language, and consider which ideas fit your own beliefs and circumstances.",
+    "chapters": [
+      "The Mystery of Parnasá Tová",
+      "The Altar of the Kitchen Table",
+      "The Moses Secret: Psalm 90:17",
+      "The Currency of Bitachon",
+      "Shalom Bayit: Peace in the Home",
+      "The 5 Sacred Business Standards of the Talmud"
+    ],
+    "forWhom": [
+      "You want a more intentional morning routine.",
+      "You enjoy prayer, scripture and reflective reading.",
+      "You are curious about Hebrew concepts, with explanations in English."
+    ],
+    "detailPage": "morning-wealth-blessing.html",
+    "reviews": []
+  },
+  {
+    "id": "ceo",
+    "title": "The Torah CEO Code",
+    "author": "Rabbi Ezra",
+    "price": 46,
+    "currency": "USD",
+    "pages": 150,
+    "category": "Work & stewardship",
+    "description": "Twelve chapters on partnerships, negotiation and business habits. Consider who you work with, how you prepare and which values you want your decisions to reflect.",
+    "goals": [
+      "work"
+    ],
+    "cover": "/images/ebook1-cover.png",
+    "sample": [
+      "The Law of the Sealed Hand\nThe Partnership Test\nThe Negotiation Silence\nThe Rothschild Principle\nThe Hidden Price Law\nThe Debt Doctrine"
+    ],
+    "format": "Digital PDF",
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "language": "English",
+    "subtitle": "Prepare for better conversations and more thoughtful decisions.",
+    "overview": "The book moves from privacy and preparation to partnership, negotiation and long-term thinking. Its chapters combine the author’s stories and interpretations with practical questions about conduct. Use it as a perspective to examine—not as a substitute for professional business or financial advice.",
+    "chapters": [
+      "The Law of the Sealed Hand",
+      "The Partnership Test",
+      "The Negotiation Silence",
+      "The Rothschild Principle",
+      "The Hidden Price Law",
+      "The Debt Doctrine"
+    ],
+    "forWhom": [
+      "You run a business or make decisions at work.",
+      "You want to think more carefully about partners and commitments.",
+      "You prefer short principles you can return to before a conversation."
+    ],
+    "detailPage": "torah-ceo-code.html",
+    "reviews": []
+  },
+  {
+    "id": "legacy",
+    "title": "Generational Wealth: The Torah Method",
+    "author": "Rabbi Ezra",
+    "price": 120,
+    "currency": "USD",
+    "pages": 208,
+    "category": "Family & legacy",
+    "description": "Explore ways to talk with family about responsibility, learning and the future. This detailed edition covers family principles, shared decisions and preparing the next generation.",
+    "goals": [
+      "legacy",
+      "family"
+    ],
+    "cover": "/images/ebook2-cover.png",
+    "sample": [
+      "The Family Constitution\nThe Inheritance Architecture\nThe Money Curriculum\nThe Apprenticeship Doctrine\nThe Fortress Strategy\nThe Reputation Currency"
+    ],
+    "format": "Digital PDF",
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "language": "English",
+    "subtitle": "Pass on what matters: your values, your knowledge and your care.",
+    "overview": "This edition treats legacy as an ongoing family conversation. It explores written principles, learning by participation, succession and reputation, alongside the author’s accounts of historical families. It is a reading framework for planning and discussion, not a legal template or a guarantee that wealth will endure.",
+    "chapters": [
+      "The Family Constitution",
+      "The Inheritance Architecture",
+      "The Money Curriculum",
+      "The Apprenticeship Doctrine",
+      "The Fortress Strategy",
+      "The Reputation Currency"
+    ],
+    "forWhom": [
+      "You want to pass on values as well as possessions.",
+      "You are ready for more deliberate family conversations.",
+      "You want questions to take to qualified legal and financial advisers."
+    ],
+    "detailPage": "generational-wealth.html",
+    "reviews": []
+  },
+  {
+    "id": "eliel",
+    "title": "The Torah Decoded",
+    "author": "Rabbi Eliel",
+    "price": 37,
+    "currency": "USD",
+    "pages": 176,
+    "category": "Prayer & daily practice",
+    "description": "Read the author’s reflections on twenty Psalms, exploring trust, patience, gratitude and care for those you love. Choose one to sit with, then return to it as your understanding grows.",
+    "goals": [
+      "learning"
+    ],
+    "cover": "/assets/books/eliel-cover.svg",
+    "sample": [
+      "Psalm 23 — The Shepherd’s Hidden Promise\nPsalm 91 — The Shield That Never Fails\nPsalm 121 — The Watcher Who Never Sleeps\nPsalm 1 — The Law of Blessed Ground\nPsalm 46 — When the World Collapses Around You\nPsalm 145 — The Open Hand of God"
+    ],
+    "format": "Digital PDF",
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "language": "English",
+    "subtitle": "Find a Psalm to reflect on in the season you are living.",
+    "overview": "Each Psalm becomes a starting point for the author’s commentary on everyday concerns and spiritual life. The edition uses an expressive, mystical voice. Read its promises as the author’s spiritual interpretation, rather than a prediction about money, health or events.",
+    "chapters": [
+      "Psalm 23 — The Shepherd’s Hidden Promise",
+      "Psalm 91 — The Shield That Never Fails",
+      "Psalm 121 — The Watcher Who Never Sleeps",
+      "Psalm 1 — The Law of Blessed Ground",
+      "Psalm 46 — When the World Collapses Around You",
+      "Psalm 145 — The Open Hand of God"
+    ],
+    "forWhom": [
+      "You want to spend more time with the Psalms.",
+      "You enjoy exploring spiritual meanings beyond a quick quotation.",
+      "You are looking for a book to revisit during different seasons of life."
+    ],
+    "detailPage": "the-torah-decoded.html",
+    "reviews": []
+  },
+  {
+    "id": "rituals",
+    "title": "The 7 Jewish Money Rituals",
+    "author": "The Millionaire Rabbi",
+    "price": 17,
+    "currency": "USD",
+    "pages": 37,
+    "category": "Prayer & daily practice",
+    "description": "A short guide to seven symbolic practices using words, familiar objects and everyday routines. Explore the author’s approach to spiritual reflection at your own pace.",
+    "goals": [
+      "learning"
+    ],
+    "cover": "/assets/books/rituals-cover.svg",
+    "sample": [
+      "The Salt in the Wallet\nThe 3 Numbers in the Wallet\nThe Hebrew Word Before Sleep\nThe 3 Coins Under the Mattress\nThe Salt at the Threshold\nWashing Hands With Intention"
+    ],
+    "format": "Digital PDF",
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "language": "English",
+    "subtitle": "Bring a moment of intention to familiar daily routines.",
+    "overview": "The seven practices combine household objects, spoken intention and the author’s mystical interpretation. They are presented as this author’s approach, not as universally prescribed Jewish observances. No object or ritual can promise a financial outcome. The Complete Rabbi’s Wealth System calendar refers to this book, but does not include its complete text.",
+    "chapters": [
+      "The Salt in the Wallet",
+      "The 3 Numbers in the Wallet",
+      "The Hebrew Word Before Sleep",
+      "The 3 Coins Under the Mattress",
+      "The Salt at the Threshold",
+      "Washing Hands With Intention"
+    ],
+    "forWhom": [
+      "You are curious about symbolic spiritual practices.",
+      "You prefer a shorter book with a defined set of themes.",
+      "You can approach the material as reflection, without expecting a financial result."
+    ],
+    "detailPage": "the-seven-jewish-money-rituals.html",
+    "reviews": []
+  },
+  {
+    "id": "ancient",
+    "title": "The Ancient Wealth Code",
+    "author": "Author not credited in this edition",
+    "price": 37,
+    "currency": "USD",
+    "pages": 142,
+    "language": "English",
+    "category": "Work & stewardship",
+    "description": "Reflect on how you use your time, resources and attention. This extended reading connects learning, community and everyday discipline with a thirty-day framework for personal reflection.",
+    "subtitle": "Make room for patience, responsibility and long-term thinking.",
+    "overview": "Organized around foundations, structures, preservation and ethics, this volume invites a patient examination of the relationship between money and responsibility. Its implementation framework encourages readers to revisit their own habits and priorities. This title is referenced on the cover of The Complete Rabbi’s Wealth System, but is not included in the available calendar PDF.",
+    "chapters": [
+      "Wealth as Responsibility, Not Status",
+      "The Long-Term Contract Mindset",
+      "Asset Thinking Versus Income Thinking",
+      "The Power of Community and Networks",
+      "Education as the Highest Investment",
+      "Capital Preservation Before Expansion"
+    ],
+    "forWhom": [
+      "You prefer sustained reading over quick tips.",
+      "You want to reflect on responsibility and stewardship.",
+      "You are interested in community, education and long-term habits."
+    ],
+    "cover": "/assets/books/ancient-cover.svg",
+    "detailPage": "the-ancient-wealth-code.html",
+    "format": "Digital PDF",
+    "goals": [],
+    "sample": [
+      "Wealth as Responsibility, Not Status\nThe Long-Term Contract Mindset\nAsset Thinking Versus Income Thinking\nThe Power of Community and Networks\nEducation as the Highest Investment\nCapital Preservation Before Expansion"
+    ],
+    "reviews": [],
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+  },
+  {
+    "id": "complete",
+    "title": "The Complete Rabbi's Wealth System",
+    "author": "The Millionaire Rabbi",
+    "price": 67,
+    "currency": "USD",
+    "pages": 211,
+    "language": "English",
+    "category": "Prayer & daily practice",
+    "description": "The available 211-page PDF contains The Rabbi’s 30-Day Prosperity Calendar, with daily practices and reflections. Although its cover names a wider collection, the other complete books are not included.",
+    "subtitle": "Follow a daily rhythm of reflection for thirty days.",
+    "overview": "The filename and cover refer to a wider system, but the inspected file contains the thirty-day calendar. It references The 7 Jewish Money Rituals and The Ancient Wealth Code without including those complete books. Each day develops a practice, explanation and reflection. This is a standard ebook programme, distinct from the fourteen-day plan created from your individual test answers.",
+    "chapters": [
+      "Week One — Purification & Opening",
+      "Week Two — Attraction & Flow",
+      "Week Three — Construction & Structure",
+      "Week Four — Legacy & Multiplication",
+      "Day 1 — The Wallet Clearing",
+      "Day 3 — The Complaint Fast"
+    ],
+    "forWhom": [
+      "You want to explore both reflection and structured practice.",
+      "You want a detailed daily calendar you can revisit.",
+      "You have checked the contents to avoid buying material you already own."
+    ],
+    "cover": "/images/ebook3-cover.jpeg",
+    "detailPage": "the-complete-rabbis-wealth-system.html",
+    "format": "Digital PDF",
+    "goals": [],
+    "sample": [
+      "Week One — Purification & Opening\nWeek Two — Attraction & Flow\nWeek Three — Construction & Structure\nWeek Four — Legacy & Multiplication\nDay 1 — The Wallet Clearing\nDay 3 — The Complaint Fast"
+    ],
+    "reviews": [],
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+  },
+  {
+    "id": "hidden",
+    "title": "The Hidden Rules of Jewish Wealth",
+    "author": "Ancient Jewish Secrets",
+    "price": 47,
+    "currency": "USD",
+    "pages": 241,
+    "language": "English",
+    "category": "Family & legacy",
+    "description": "Forty spiritual reflections on privacy, gratitude, family learning and daily habits. Includes the author’s stories and a forty-day practice section for readers who enjoy a longer journey.",
+    "subtitle": "Look more closely at the habits you keep and the values you share.",
+    "overview": "The book ranges from household rituals to family learning, stories and a forty-day practice. These are the author’s interpretations and narratives, not verified evidence that an identity or ritual produces wealth. The useful question throughout is which ideas invite a thoughtful change in your own conduct.",
+    "chapters": [
+      "The Rule of the Sealed Mouth",
+      "The Shabbat Principle",
+      "The Obligation to Earn",
+      "Honor the Source Before the Amount",
+      "The Inheritance Is in the Habits, Not the Money",
+      "The 40-Day Wealth Practice"
+    ],
+    "forWhom": [
+      "You enjoy a broad collection of themes to revisit.",
+      "You want prompts about habits, family and gratitude.",
+      "You prefer an expressive spiritual voice and a longer reading journey."
+    ],
+    "cover": "/assets/books/hidden-cover.svg",
+    "detailPage": "the-hidden-rules-of-jewish-wealth.html",
+    "format": "Digital PDF",
+    "goals": [],
+    "sample": [
+      "The Rule of the Sealed Mouth\nThe Shabbat Principle\nThe Obligation to Earn\nHonor the Source Before the Amount\nThe Inheritance Is in the Habits, Not the Money\nThe 40-Day Wealth Practice"
+    ],
+    "reviews": [],
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+  },
+  {
+    "id": "protection",
+    "title": "The Jewish Wealth Protection Code",
+    "author": "Rabbi Aaron",
+    "price": 49,
+    "currency": "USD",
+    "pages": 163,
+    "language": "English",
+    "category": "Work & stewardship",
+    "description": "Explore the author’s historical accounts and ideas about planning for uncertainty. Includes checklists and review questions to consider with a qualified financial or legal adviser.",
+    "subtitle": "Ask clearer questions about the future you are preparing for.",
+    "overview": "This volume combines historical narratives with proposed frameworks for resilience, annual review and succession. It contains financial, legal and historical claims that require independent evaluation. Treat the checklists as discussion material for a qualified adviser, not instructions to move assets or a promise of protection.",
+    "chapters": [
+      "The Crisis Playbook",
+      "The Torah Framework",
+      "The Modern Application",
+      "The Legacy Protection",
+      "The Dynasty Archives",
+      "The Operational Codex"
+    ],
+    "forWhom": [
+      "You want to examine how you prepare for uncertainty.",
+      "You are interested in the author’s accounts of commercial history.",
+      "You want topics to discuss with qualified advisers before taking action."
+    ],
+    "cover": "/assets/books/protection-cover.svg",
+    "detailPage": "the-jewish-wealth-protection-code.html",
+    "format": "Digital PDF",
+    "goals": [],
+    "sample": [
+      "The Crisis Playbook\nThe Torah Framework\nThe Modern Application\nThe Legacy Protection\nThe Dynasty Archives\nThe Operational Codex"
+    ],
+    "reviews": [],
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+  },
+  {
+    "id": "negotiation",
+    "title": "The Talmud Negotiation Bible",
+    "author": "Rabbi Aaron",
+    "price": 39,
+    "currency": "USD",
+    "pages": 117,
+    "language": "English",
+    "category": "Work & stewardship",
+    "description": "A practical reading on preparation, composure and negotiation. Twelve techniques and worked scenarios explore conversations about salary, property, business and contracts.",
+    "subtitle": "Walk into important conversations feeling better prepared.",
+    "overview": "The first part explores preparation and conduct; the second sets out twelve tactics; the final part works through several negotiation settings. A glossary and quick-reference material support later review. The book’s cultural and historical framing is the author’s, and its examples do not guarantee a particular result.",
+    "chapters": [
+      "The Pre-Negotiation Protocol",
+      "Emotional Discipline Under Pressure",
+      "The Architecture of Leverage",
+      "The Silence Weapon",
+      "The Walk Away Doctrine",
+      "Scenario: Salary Negotiation"
+    ],
+    "forWhom": [
+      "You want to prepare before a significant conversation.",
+      "You prefer scenarios and a structured set of techniques.",
+      "You value clear boundaries between preparation and misrepresentation."
+    ],
+    "cover": "/assets/books/negotiation-cover.svg",
+    "detailPage": "the-talmud-negotiation-bible.html",
+    "format": "Digital PDF",
+    "goals": [],
+    "sample": [
+      "The Pre-Negotiation Protocol\nEmotional Discipline Under Pressure\nThe Architecture of Leverage\nThe Silence Weapon\nThe Walk Away Doctrine\nScenario: Salary Negotiation"
+    ],
+    "reviews": [],
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+  },
+  {
+    "id": "codigo",
+    "title": "El Código Judío de la Riqueza",
+    "author": "Rabino Salomón",
+    "price": 39,
+    "currency": "USD",
+    "pages": 259,
+    "language": "Español",
+    "category": "Spanish editions",
+    "description": "A Spanish-language collection of principles, symbolic practices and reflections on your relationship with money. Includes a calendar and prompts for reviewing personal habits.",
+    "subtitle": "Explore the everyday habits behind a more intentional life.",
+    "overview": "This Spanish edition brings personal principles together with the author’s symbolic practices. It invites reflection on daily habits, gratitude and the meaning you give to money. Its spiritual claims are not financial guarantees. Some themes overlap with El Calendario Judío de la Riqueza; review both descriptions before choosing.",
+    "chapters": [
+      "El Sobre del Diezmo",
+      "La Honra del Billete",
+      "La Sal del Viernes",
+      "El Cheshbon del Viernes",
+      "Las Palabras del Despertar",
+      "La Cuenta Antes de Comprar"
+    ],
+    "forWhom": [
+      "You prefer to read in Spanish.",
+      "You enjoy exploring spiritual ideas with your own judgement.",
+      "You want a longer book you can read a section at a time."
+    ],
+    "cover": "/assets/books/codigo-cover.svg",
+    "detailPage": "el-codigo-judio-de-la-riqueza.html",
+    "format": "Digital PDF",
+    "goals": [],
+    "sample": [
+      "El Sobre del Diezmo\nLa Honra del Billete\nLa Sal del Viernes\nEl Cheshbon del Viernes\nLas Palabras del Despertar\nLa Cuenta Antes de Comprar"
+    ],
+    "reviews": [],
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+  },
+  {
+    "id": "calendario",
+    "title": "El Calendario Judío de la Riqueza",
+    "author": "Rabino Salomón",
+    "price": 17,
+    "currency": "USD",
+    "pages": 75,
+    "language": "Español",
+    "category": "Spanish editions",
+    "description": "A Spanish-language calendar with thirty days of writing prompts, habit reviews and symbolic practices. A structured companion for readers who prefer a small step each day.",
+    "subtitle": "Follow a simple pattern of morning, daytime and evening reflection.",
+    "overview": "Each day offers a morning, daytime and evening sequence in Spanish. Writing prompts and habit reviews sit alongside symbolic practices. This is a general programme in an existing ebook, separate from the fourteen-day plan prepared from your test answers. Some themes also appear in El Código Judío de la Riqueza.",
+    "chapters": [
+      "Al despertar",
+      "Durante el día",
+      "Antes de dormir",
+      "La revisión de hábitos",
+      "El Cierre y el Inicio",
+      "Has Completado los 30 Días"
+    ],
+    "forWhom": [
+      "You want a daily guide written in Spanish.",
+      "You prefer brief steps to longer chapters.",
+      "You would like to observe your habits without expecting guaranteed results."
+    ],
+    "cover": "/assets/books/calendario-cover.svg",
+    "detailPage": "el-calendario-judio-de-la-riqueza.html",
+    "format": "Digital PDF",
+    "goals": [],
+    "sample": [
+      "Al despertar\nDurante el día\nAntes de dormir\nLa revisión de hábitos\nEl Cierre y el Inicio\nHas Completado los 30 Días"
+    ],
+    "reviews": [],
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+  }
+]

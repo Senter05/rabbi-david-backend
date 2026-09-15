@@ -4,7 +4,7 @@ from http.cookies import SimpleCookie
 from reading_access import reading_view
 from input_validation import validate_contact_email,validate_written_answer
 from pathlib import Path
-import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os,base64
+import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os
 from operations import BoundedExecutor, CapacityError, origins, reserve, ProviderBudget
 import providers
 from contextlib import contextmanager
@@ -499,7 +499,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/state':return self.send(obj=safe_state(get(sid)))
             if path=='/api/catalog':return self.send(obj=[b for b in CATALOG if b.get('active',True)])
             if path=='/api/practices':return self.send(obj=PRACTICES)
-            if path=='/api/config':return self.send(obj=dict(mode='preview',payments=False,email='smtp' if mail_configured() else 'local',support='email' if mail_configured() and CONFIG.get('support_email') else 'local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
+            if path=='/api/config':return self.send(obj=dict(version=VERSION,model=CONFIG.get('openrouter_model',''),mode='preview',payments=False,email='smtp' if mail_configured() else 'local',support='email' if mail_configured() and CONFIG.get('support_email') else 'local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
             if path=='/api/export':
                 return self.send(obj=safe_state(get(sid)),headers={'Content-Disposition':'attachment; filename="my-reading-data.json"'})
             if path=='/api/inbox':
@@ -752,13 +752,10 @@ def main():
         config=json.loads(Path('config.json').read_text(encoding='utf-8'))
     elif Path('../work/rabbi-david-private/config.json').is_file():
         config=json.loads(Path('../work/rabbi-david-private/config.json').read_text(encoding='utf-8'))
-    DEFAULT_OR_KEY = base64.b64decode('c2stb3ItdjEtYjI1NWMwMWM0ZjIxM2JhMzk2ZGQ0ZGNiNTRhYTkxNTlmOTRjNjhmNDVkMWFhMmE0ODc1M2IxN2JmNTQ2MDY0MA==').decode('utf-8')
     if os.environ.get('OPENROUTER_KEY'):
         config['openrouter_key']=os.environ['OPENROUTER_KEY']
     elif os.environ.get('OPENROUTER_API_KEY'):
         config['openrouter_key']=os.environ['OPENROUTER_API_KEY']
-    elif not config.get('openrouter_key') or '090ee1a0' in config.get('openrouter_key',''):
-        config['openrouter_key']=DEFAULT_OR_KEY
 
     if os.environ.get('OPENROUTER_MODEL'):
         config['openrouter_model']=os.environ['OPENROUTER_MODEL']

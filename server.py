@@ -740,7 +740,7 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('--config',default=os.environ.get('CONFIG_PATH'))
     p.add_argument('--data',default=os.environ.get('DATA_DIR','./antigravity-data'))
-    p.add_argument('--host',default=os.environ.get('HOST','127.0.0.1'))
+    p.add_argument('--host',default=os.environ.get('HOST','0.0.0.0'))
     p.add_argument('--port',type=int,default=int(os.environ.get('PORT',8100)))
     p.add_argument('--offline',action='store_true')
     p.add_argument('--enable-voice',action='store_true',default=os.environ.get('ENABLE_VOICE','0')=='1')

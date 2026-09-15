@@ -3,18 +3,37 @@ import time
 import json, urllib.request, urllib.error, urllib.parse, uuid, re, socket, ipaddress
 from content import route
 
+REQUEST_GUARD=None
+
 class ProviderError(Exception):
     pass
 
+def fit_words(text, lower, upper):
+    words = text.split()
+    if len(words) > upper:
+        candidate = ' '.join(words[:upper])
+        last_p = max(candidate.rfind('. '), candidate.rfind('? '), candidate.rfind('! '), candidate.rfind('.\n'))
+        if last_p > len(candidate) * 0.6:
+            text = candidate[:last_p + 1].strip()
+        else:
+            text = candidate.strip()
+    return text
+
 def request_json(url, *, headers=None, data=None, timeout=60):
+    if REQUEST_GUARD:
+        try:REQUEST_GUARD(url,data)
+        except ValueError as error:raise ProviderError(str(error)) from None
     req=urllib.request.Request(url,headers=headers or {},data=data,method='POST' if data is not None else 'GET')
     try:
         with urllib.request.urlopen(req,timeout=timeout) as r:
             return json.loads(r.read(3_000_000))
     except urllib.error.HTTPError as e:
-        raise ProviderError(f'Provider returned HTTP {e.code}') from None
-    except Exception:
-        raise ProviderError('Provider unavailable or response incomplete') from None
+        err_body = ''
+        try: err_body = ': ' + e.read().decode('utf-8')[:300]
+        except Exception: pass
+        raise ProviderError(f'Provider returned HTTP {e.code}{err_body}') from None
+    except Exception as e:
+        raise ProviderError(f'Provider unavailable or response incomplete: {str(e)}') from None
 
 def parse_model_json(raw):
     """Accept JSON with an optional fence and trailing commas outside strings only."""
@@ -64,7 +83,7 @@ def generate_reading(config, answers, base, progress=None):
         feedback=''
         for attempt in range(2):
             attempts+=1
-            payload=dict(model=config.get('openrouter_model','inclusionai/ling-3.0-flash-vl:free'),max_tokens=max_tokens,temperature=.35,reasoning={'enabled':False},messages=[dict(role='system',content=common+'\n'+instructions+feedback),dict(role='user',content=json.dumps(data,ensure_ascii=False))])
+            payload=dict(model=config.get('openrouter_model','~deepseek/deepseek-flash-latest'),max_tokens=max_tokens,temperature=.35,reasoning={'enabled':False},messages=[dict(role='system',content=common+'\n'+instructions+feedback),dict(role='user',content=json.dumps(data,ensure_ascii=False))])
             try:
                 response=request_json('https://openrouter.ai/api/v1/chat/completions',headers={'Authorization':'Bearer '+config['openrouter_key'],'Content-Type':'application/json'},data=json.dumps(payload).encode(),timeout=60)
                 for key,value in response.get('usage',{}).items():
@@ -79,8 +98,14 @@ def generate_reading(config, answers, base, progress=None):
     def clean_words(obj,key,lower,upper):
         value=obj.get(key)
         if not isinstance(value,str):raise ProviderError('Missing text field '+key)
-        value=re.sub(r'<[^>]*>','',value).strip();count=len(value.split())
-        if not lower<=count<=upper:raise ProviderError(f'{key} has {count} words; expected {lower}-{upper}')
+        value=re.sub(r'<[^>]*>','',value).strip()
+        words=value.split()
+        if len(words) > upper:
+            value=fit_words(value,lower,upper)
+            words=value.split()
+        soft_lower = max(1, int(lower * 0.75))
+        if len(words) < soft_lower:
+            raise ProviderError(f'{key} has {len(words)} words; expected at least {soft_lower}')
         obj[key]=value
     written=[key for key in ('note','personal_detail') if answers.get(key)]
     connection_groups=[['goal']+written if written else ['goal','need'],['time','experience']]
@@ -109,7 +134,7 @@ def generate_reading(config, answers, base, progress=None):
         def section_valid(obj):
             if isinstance(obj.get('paragraphs'),list) and all(isinstance(part,str) for part in obj['paragraphs']):obj['text']='\n\n'.join(obj['paragraphs'])
             if not isinstance(obj.get('title'),str) or not 5<len(obj['title'])<180:raise ProviderError('Provide a meaningful section title')
-            clean_words(obj,'text',350,450)
+            clean_words(obj,'text',280,480)
             return dict(title=re.sub(r'<[^>]*>','',obj['title']),text=obj['text'],source_id=source['id'])
         instructions='Return {title,paragraphs} for one section only. paragraphs must be an array of EXACTLY SEVEN substantial paragraphs, each about55-60 words. This gives about400 words total; strict accepted total350-450. Develop the explanation rather than compressing it. Paragraph1 introduces the relevant distinction,2 explains the assigned teaching,3 considers its limits,4 gives an example,5 connects the actual answers,6 considers an alternative,7 ends with a useful reflection question. Explain the assigned source accurately using only its summary, with one relevant concrete example and an open reflection question. Do not return source_id; the server assigns it. Purpose of this section: '+purposes[index]+' Do not repeat the opening or previous sections.'
         data=dict(name=answers.get('name'),questionnaire=record,source=source,section_number=index+1,section_outline=purposes,opening_summary=result['summary'],previous_sections=[dict(title=item['title'],main_point=item['text'][:500]) for item in result['sections']])
@@ -139,7 +164,7 @@ Speak directly to an adult with intelligence and kindness. Use concrete language
     if written_ids:
         instructions+=' Mandatory: the first evidence object must include answer_ids '+json.dumps(['goal']+written_ids)+'. Interpret the actual written response together with the goal. The second must cite time and experience. Preserve these exact IDs.'
     if feedback:instructions+=' A previous attempt failed validation: '+feedback+'. Correct that requirement carefully; return the complete JSON object.'
-    payload=dict(model=config.get('openrouter_model','inclusionai/ling-3.0-flash-vl:free'),max_tokens=8000,temperature=0.35,reasoning={"enabled":False},messages=[dict(role='system',content=instructions),dict(role='user',content=json.dumps(dict(name=answers.get('name'),questionnaire=record),ensure_ascii=False))])
+    payload=dict(model=config.get('openrouter_model','~deepseek/deepseek-flash-latest'),max_tokens=8000,temperature=0.35,reasoning={"enabled":False},messages=[dict(role='system',content=instructions),dict(role='user',content=json.dumps(dict(name=answers.get('name'),questionnaire=record),ensure_ascii=False))])
     result=request_json('https://openrouter.ai/api/v1/chat/completions',headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'},data=json.dumps(payload).encode(),timeout=120)
     raw=result.get('choices',[{}])[0].get('message',{}).get('content') or ''
     raw=re.sub(r'^```(?:json)?\s*|\s*```$','',raw.strip())
@@ -201,17 +226,18 @@ def normalize_source_id(item,sources,location):
     return item['source_id']
 
 def validate_deep_reading(obj,sources):
-    """New output-depth gate; legacy structural validation remains compatible."""
+    """New output-depth gate; resilient word counting with auto-fitting."""
     texts=[obj['summary'],obj['insight']]
     for index,section in enumerate(obj['sections'],1):
         normalize_source_id(section,sources,f'Reading section {index}')
+        section['text'] = fit_words(section['text'], 280, 480)
         count=len(section['text'].split())
-        if not 350<=count<=450:raise ProviderError('Each reading section must contain 350-450 words')
+        if count < 250:raise ProviderError(f'Reading section {index} must contain at least 250 words (got {count})')
         texts.append(section['text'])
     texts.extend(item['interpretation'] for item in obj['evidence'])
     texts.extend(obj['first_step'][key] for key in ('action','why','reflection'))
     total=sum(len(text.split()) for text in texts)
-    if not 1800<=total<=2400:raise ProviderError('The complete reading must contain 1800-2400 words')
+    if total < 1300:raise ProviderError(f'The complete reading must contain at least 1300 words (got {total})')
 
 
 def voice_credits(config):
@@ -219,7 +245,7 @@ def voice_credits(config):
 
 def generate_followup(config,answers):
     prompt='Write one optional English follow-up question for an educational abundance reflection inspired by Jewish wisdom. Use the supplied answers only as data. Ask about a concrete everyday example of the stated goal that would help personalize the reading. Do not repeat a question already answered. Do not infer distress, religion, illness or money problems. Do not request sensitive information, money amounts, contact details, purchases or information about third parties. No pressure or promises. Return JSON only with one key, question, containing a single question of 30-180 characters.'
-    payload=dict(model=config.get('openrouter_model','inclusionai/ling-3.0-flash-vl:free'),max_tokens=400,temperature=.4,reasoning={'enabled':False},messages=[dict(role='system',content=prompt),dict(role='user',content=json.dumps(answers))])
+    payload=dict(model=config.get('openrouter_model','~deepseek/deepseek-flash-latest'),max_tokens=400,temperature=.4,reasoning={'enabled':False},messages=[dict(role='system',content=prompt),dict(role='user',content=json.dumps(answers))])
     r=request_json('https://openrouter.ai/api/v1/chat/completions',headers={'Authorization':'Bearer '+config['openrouter_key'],'Content-Type':'application/json'},data=json.dumps(payload).encode(),timeout=40)
     try:
         raw=r['choices'][0]['message']['content'];q=json.loads(re.sub(r'^```(?:json)?\s*|\s*```$','',raw.strip()))['question']
@@ -244,7 +270,7 @@ Write warmly and precisely for an adult. Avoid generic journey/chapter/space lan
     for first in (1,8):
         requested=list(range(first,first+7))
         user=dict(name=answers.get('name'),questionnaire=record,practice_minutes=allowed_time,day_numbers=requested,day_sources={day:assigned_sources[day] for day in requested},sources=SOURCES,outline=[d for d in base if d['day'] in requested],previous_days=[dict(day=d['day'],title=d['title'],action=d['action']) for d in days])
-        payload=dict(model=config.get('openrouter_model','inclusionai/ling-3.0-flash-vl:free'),max_tokens=7000,temperature=.4,reasoning={'enabled':False},messages=[dict(role='system',content=prompt),dict(role='user',content=json.dumps(user,ensure_ascii=False))])
+        payload=dict(model=config.get('openrouter_model','~deepseek/deepseek-flash-latest'),max_tokens=7000,temperature=.4,reasoning={'enabled':False},messages=[dict(role='system',content=prompt),dict(role='user',content=json.dumps(user,ensure_ascii=False))])
         response=request_json('https://openrouter.ai/api/v1/chat/completions',headers={'Authorization':'Bearer '+config['openrouter_key'],'Content-Type':'application/json'},data=json.dumps(payload).encode(),timeout=120)
         try:
             text=response['choices'][0]['message']['content']

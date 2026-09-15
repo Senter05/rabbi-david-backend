@@ -3,7 +3,7 @@
     "id": "morning",
     "title": "The Rabbi's Morning Wealth Blessing",
     "author": "Rabbi David",
-    "price": 27,
+    "price": null,
     "currency": "USD",
     "pages": 212,
     "category": "Prayer & daily practice",
@@ -12,7 +12,7 @@
       "calm",
       "direction"
     ],
-    "cover": "/images/ebook-prayer-cover.png",
+    "cover": "/images/ebook-prayer-cover.webp",
     "sample": [
       "The Mystery of Parnasá Tová\nThe Altar of the Kitchen Table\nThe Moses Secret: Psalm 90:17\nThe Currency of Bitachon\nShalom Bayit: Peace in the Home\nThe 5 Sacred Business Standards of the Talmud"
     ],
@@ -35,7 +35,12 @@
       "You are curious about Hebrew concepts, with explanations in English."
     ],
     "detailPage": "morning-wealth-blessing.html",
-    "reviews": []
+    "reviews": [],
+    "active": false,
+    "availability": "bundle_only",
+    "includedIn": [
+      "complete"
+    ]
   },
   {
     "id": "ceo",
@@ -72,13 +77,14 @@
       "You prefer short principles you can return to before a conversation."
     ],
     "detailPage": "torah-ceo-code.html",
-    "reviews": []
+    "reviews": [],
+    "active": false
   },
   {
     "id": "legacy",
     "title": "Generational Wealth: The Torah Method",
     "author": "Rabbi Ezra",
-    "price": 120,
+    "price": 77,
     "currency": "USD",
     "pages": 208,
     "category": "Family & legacy",
@@ -110,7 +116,8 @@
       "You want questions to take to qualified legal and financial advisers."
     ],
     "detailPage": "generational-wealth.html",
-    "reviews": []
+    "reviews": [],
+    "active": true
   },
   {
     "id": "eliel",
@@ -147,13 +154,14 @@
       "You are looking for a book to revisit during different seasons of life."
     ],
     "detailPage": "the-torah-decoded.html",
-    "reviews": []
+    "reviews": [],
+    "active": false
   },
   {
     "id": "rituals",
     "title": "The 7 Jewish Money Rituals",
     "author": "The Millionaire Rabbi",
-    "price": 17,
+    "price": 32,
     "currency": "USD",
     "pages": 37,
     "category": "Prayer & daily practice",
@@ -169,7 +177,7 @@
     "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
     "language": "English",
     "subtitle": "Bring a moment of intention to familiar daily routines.",
-    "overview": "The seven practices combine household objects, spoken intention and the author’s mystical interpretation. They are presented as this author’s approach, not as universally prescribed Jewish observances. No object or ritual can promise a financial outcome. The Complete Rabbi’s Wealth System calendar refers to this book, but does not include its complete text.",
+    "overview": "The seven practices combine household objects, spoken intention and the author’s mystical interpretation. They are presented as this author’s approach, not as universally prescribed Jewish observances. No object or ritual can promise a financial outcome. This complete ebook is also included in the four-ebook bundle.",
     "chapters": [
       "The Salt in the Wallet",
       "The 3 Numbers in the Wallet",
@@ -184,7 +192,8 @@
       "You can approach the material as reflection, without expecting a financial result."
     ],
     "detailPage": "the-seven-jewish-money-rituals.html",
-    "reviews": []
+    "reviews": [],
+    "active": true
   },
   {
     "id": "ancient",
@@ -219,42 +228,73 @@
       "Wealth as Responsibility, Not Status\nThe Long-Term Contract Mindset\nAsset Thinking Versus Income Thinking\nThe Power of Community and Networks\nEducation as the Highest Investment\nCapital Preservation Before Expansion"
     ],
     "reviews": [],
-    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "active": false
   },
   {
     "id": "complete",
     "title": "The Complete Rabbi's Wealth System",
     "author": "The Millionaire Rabbi",
-    "price": 67,
+    "price": 150,
     "currency": "USD",
-    "pages": 211,
+    "pages": 668,
     "language": "English",
     "category": "Prayer & daily practice",
-    "description": "The available 211-page PDF contains The Rabbi’s 30-Day Prosperity Calendar, with daily practices and reflections. Although its cover names a wider collection, the other complete books are not included.",
-    "subtitle": "Follow a daily rhythm of reflection for thirty days.",
-    "overview": "The filename and cover refer to a wider system, but the inspected file contains the thirty-day calendar. It references The 7 Jewish Money Rituals and The Ancient Wealth Code without including those complete books. Each day develops a practice, explanation and reflection. This is a standard ebook programme, distinct from the fourteen-day plan created from your individual test answers.",
+    "description": "The four-ebook bundle includes The Rabbi’s Morning Wealth Blessing, Generational Wealth: The Torah Method, The 7 Jewish Money Rituals, and The Complete Rabbi’s Wealth System.",
+    "subtitle": "Four complete ebooks. One collection for your everyday practice and family legacy.",
+    "overview": "Explore morning reflection, family legacy, seven symbolic practices and the thirty-day calendar together. Each title is a complete ebook; the bundle is separate from your AI-assisted reading, personal fourteen-day plan and audio.",
     "chapters": [
-      "Week One — Purification & Opening",
-      "Week Two — Attraction & Flow",
-      "Week Three — Construction & Structure",
-      "Week Four — Legacy & Multiplication",
-      "Day 1 — The Wallet Clearing",
-      "Day 3 — The Complaint Fast"
+      "The Rabbi's Morning Wealth Blessing",
+      "Generational Wealth: The Torah Method",
+      "The 7 Jewish Money Rituals",
+      "The Complete Rabbi's Wealth System"
     ],
     "forWhom": [
-      "You want to explore both reflection and structured practice.",
-      "You want a detailed daily calendar you can revisit.",
-      "You have checked the contents to avoid buying material you already own."
+      "You want all four ebooks in one collection.",
+      "You want to explore both everyday practice and family legacy.",
+      "You want Morning Wealth Blessing, available exclusively in this bundle."
     ],
     "cover": "/images/ebook3-cover.jpeg",
     "detailPage": "the-complete-rabbis-wealth-system.html",
-    "format": "Digital PDF",
+    "format": "4 digital PDFs",
     "goals": [],
     "sample": [
-      "Week One — Purification & Opening\nWeek Two — Attraction & Flow\nWeek Three — Construction & Structure\nWeek Four — Legacy & Multiplication\nDay 1 — The Wallet Clearing\nDay 3 — The Complaint Fast"
+      "The Rabbi's Morning Wealth Blessing",
+      "Generational Wealth: The Torah Method",
+      "The 7 Jewish Money Rituals",
+      "The Complete Rabbi's Wealth System"
     ],
     "reviews": [],
-    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "active": true,
+    "offerType": "bundle",
+    "ebookCount": 4,
+    "includedBooks": [
+      {
+        "id": "morning",
+        "title": "The Rabbi's Morning Wealth Blessing",
+        "pages": 212,
+        "cover": "/images/ebook-prayer-cover.webp"
+      },
+      {
+        "id": "legacy",
+        "title": "Generational Wealth: The Torah Method",
+        "pages": 208,
+        "cover": "/images/ebook2-cover.png"
+      },
+      {
+        "id": "rituals",
+        "title": "The 7 Jewish Money Rituals",
+        "pages": 37,
+        "cover": "/assets/books/rituals-cover.svg"
+      },
+      {
+        "id": "complete",
+        "title": "The Complete Rabbi's Wealth System",
+        "pages": 211,
+        "cover": "/images/ebook3-cover.jpeg"
+      }
+    ]
   },
   {
     "id": "hidden",
@@ -289,7 +329,8 @@
       "The Rule of the Sealed Mouth\nThe Shabbat Principle\nThe Obligation to Earn\nHonor the Source Before the Amount\nThe Inheritance Is in the Habits, Not the Money\nThe 40-Day Wealth Practice"
     ],
     "reviews": [],
-    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "active": false
   },
   {
     "id": "protection",
@@ -324,7 +365,8 @@
       "The Crisis Playbook\nThe Torah Framework\nThe Modern Application\nThe Legacy Protection\nThe Dynasty Archives\nThe Operational Codex"
     ],
     "reviews": [],
-    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "active": false
   },
   {
     "id": "negotiation",
@@ -359,7 +401,8 @@
       "The Pre-Negotiation Protocol\nEmotional Discipline Under Pressure\nThe Architecture of Leverage\nThe Silence Weapon\nThe Walk Away Doctrine\nScenario: Salary Negotiation"
     ],
     "reviews": [],
-    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "active": false
   },
   {
     "id": "codigo",
@@ -394,7 +437,8 @@
       "El Sobre del Diezmo\nLa Honra del Billete\nLa Sal del Viernes\nEl Cheshbon del Viernes\nLas Palabras del Despertar\nLa Cuenta Antes de Comprar"
     ],
     "reviews": [],
-    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "active": false
   },
   {
     "id": "calendario",
@@ -429,6 +473,7 @@
       "Al despertar\nDurante el día\nAntes de dormir\nLa revisión de hábitos\nEl Cierre y el Inicio\nHas Completado los 30 Días"
     ],
     "reviews": [],
-    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review."
+    "editorialStatus": "Existing PDF inspected; theological, historical and financial claims remain the author’s and require editorial review.",
+    "active": false
   }
 ]

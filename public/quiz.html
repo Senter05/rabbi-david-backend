@@ -1,100 +1,86 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Personal Abundance Reading · Rabbi David</title>
-  <meta name="description" content="Explore your priorities through Jewish wisdom and receive a personal reflection based on your answers.">
-  <link rel="canonical" href="https://rabbidavid.com/quiz.html">
-  <meta name="robots" content="noindex, nofollow">
-
-  <!-- Dedicated Institutional Mystic Stylesheet -->
-  <link rel="stylesheet" href="css/quiz-mystic.css">
-  <link rel="stylesheet" href="css/funnel-fixes.css">
-<link rel="stylesheet" href="css/mobile-accessibility.css">
-</head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Your Personal Abundance Reading · Rabbi David</title>
+<meta content="Explore your priorities through Jewish wisdom and receive a personal reflection based on your answers." name="description"/>
+<meta content="noindex, nofollow" name="robots"/>
+<!-- Dedicated Institutional Mystic Stylesheet -->
+<link href="css/quiz-mystic.css" rel="stylesheet"/>
+<link href="css/funnel-fixes.css" rel="stylesheet"/>
+<link href="css/mobile-accessibility.css" rel="stylesheet"/>
+<link href="css/policies.css" rel="stylesheet"/></head>
 <body class="mystic-quiz-page">
-
-  <!-- Particles Background Canvas -->
-  <canvas id="particles-canvas"></canvas>
-
-  <!-- ==================== INSTITUTIONAL SACRED HEADER ==================== -->
-  <header class="mystic-header">
-    <div class="mystic-header-inner">
-      <a href="index.html" class="mystic-institute-brand">
-        <div class="mystic-seal-badge">
-          <img src="assets/logo.webp" alt="Sacred Hebrew Seal">
-        </div>
-        <div class="mystic-institute-text">
-          <h1>YOUR PERSONAL ABUNDANCE READING</h1>
-          <span>Ancient Jewish Wisdom for Modern Life</span>
-        </div>
-      </a>
-
-      <div class="mystic-security-badge">
-        <span class="pulse-dot-green"></span>
-        <span><strong style="color:#FFF;">Confidential</strong> <span class="desktop-only">· Personal Reading</span></span>
-      </div>
-    </div>
-  </header>
-
-  <!-- ==================== QUIZ MAIN CONTAINER ==================== -->
-  <main class="mystic-container">
-
-    <!-- SACRED CONSECRATION NOTICE -->
-    <div class="consecration-notice">
-      <div class="notice-icon">✡</div>
-      <div class="notice-text">
-        <h4>More Peace. Clearer Purpose. A Thoughtful Next Step.</h4>
-        <p>Tell us what matters to you—peace around money, family, purpose or the next chapter of life. Your answers will shape a reading inspired by Jewish wisdom and practical steps you can use.</p>
-      </div>
-    </div>
-
-    <!-- PROGRESS TRACKER -->
-    <div class="quiz-progress-wrap" id="progressWrap">
-      <div class="quiz-progress-meta">
-        <span id="qCounter">Loading your questions…</span>
-        <span id="qPercent">6%</span>
-      </div>
-      <div class="quiz-progress-track">
-        <div class="quiz-progress-fill" id="progressFill" style="width: 6%;"></div>
-      </div>
-    </div>
-
-    <!-- QUESTION SCREEN (DYNAMICALLY INJECTED BY QUIZ-ENGINE.JS) -->
-    <div class="question-screen" id="questionCard">
-      <!-- Injected by JavaScript -->
-    </div>
-
-    <!-- QUIZ NAVIGATION ACTION BUTTONS -->
-    <div class="q-nav" id="quizNav">
-      <button class="btn-back" id="backBtn" style="display: none;">← Previous Path</button>
-      <button class="btn-continue" id="continueBtn" disabled>Continue Path →</button>
-    </div>
-
-    <!-- SACRED COMPUTATION SCREEN (THE 22 PATHS OF WISDOM) -->
-    <div class="computation-screen" id="computationScreen">
-      <div class="sacred-seal-orb">
-        <div class="orb-ring-outer"></div>
-        <div class="orb-ring-inner"></div>
-        <div class="orb-symbol">✡</div>
-      </div>
-      <h2 class="comp-headline">Bringing Your Answers Together…</h2>
-      <p class="comp-sub">We are preparing a reading around what you shared: your priorities, your daily life and the time you have. Your answers are saved, so you can return without starting again.</p>
-
-      <div class="comp-steps" role="status">
-        <div class="comp-step" id="step1"><div class="step-check">✓</div><span>Your answers are saved.</span></div>
-        <div class="comp-step" id="step2"><div class="step-check"></div><span>Your individual reading is being prepared.</span></div>
-        <div class="comp-step" id="step3"><div class="step-check"></div><span>Your reading will open here when it is ready.</span></div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- Scripts -->
-  <script src="js/particles.js"></script>
-  
-  <script src="js/api-client.js"></script>
-  <script src="js/quiz-engine.js"></script>
-</body>
+<!-- Particles Background Canvas -->
+<canvas id="particles-canvas"></canvas>
+<!-- ==================== INSTITUTIONAL SACRED HEADER ==================== -->
+<header class="mystic-header">
+<div class="mystic-header-inner">
+<a class="mystic-institute-brand" href="index.html">
+<div class="mystic-seal-badge">
+<img alt="Sacred Hebrew Seal" src="assets/logo.webp"/>
+</div>
+<div class="mystic-institute-text">
+<h1>YOUR PERSONAL ABUNDANCE READING</h1>
+<span>Ancient Jewish Wisdom for Modern Life</span>
+</div>
+</a>
+<div class="mystic-security-badge">
+<span class="pulse-dot-green"></span>
+<span><strong style="color:#FFF;">Confidential</strong> <span class="desktop-only">· Personal Reading</span></span>
+</div>
+</div>
+</header>
+<!-- ==================== QUIZ MAIN CONTAINER ==================== -->
+<main class="mystic-container">
+<!-- SACRED CONSECRATION NOTICE -->
+<div class="consecration-notice">
+<div class="notice-icon">✡</div>
+<div class="notice-text">
+<h4>More Peace. Clearer Purpose. A Thoughtful Next Step.</h4>
+<p>Tell us what matters to you—peace around money, family, purpose or the next chapter of life. Your answers will shape a reading inspired by Jewish wisdom and practical steps you can use.</p>
+</div>
+</div>
+<!-- PROGRESS TRACKER -->
+<div class="quiz-progress-wrap" id="progressWrap">
+<div class="quiz-progress-meta">
+<span id="qCounter">Loading your questions…</span>
+<span id="qPercent">6%</span>
+</div>
+<div class="quiz-progress-track">
+<div class="quiz-progress-fill" id="progressFill" style="width: 6%;"></div>
+</div>
+</div>
+<!-- QUESTION SCREEN (DYNAMICALLY INJECTED BY QUIZ-ENGINE.JS) -->
+<div class="question-screen" id="questionCard">
+<!-- Injected by JavaScript -->
+</div>
+<!-- QUIZ NAVIGATION ACTION BUTTONS -->
+<div class="q-nav" id="quizNav">
+<button class="btn-back" id="backBtn" style="display: none;">← Previous Path</button>
+<button class="btn-continue" disabled="" id="continueBtn">Continue Path →</button>
+</div>
+<!-- SACRED COMPUTATION SCREEN (THE 22 PATHS OF WISDOM) -->
+<div class="computation-screen" id="computationScreen">
+<div class="sacred-seal-orb">
+<div class="orb-ring-outer"></div>
+<div class="orb-ring-inner"></div>
+<div class="orb-symbol">✡</div>
+</div>
+<h2 class="comp-headline">Bringing Your Answers Together…</h2>
+<p class="comp-sub">We are preparing a reading around what you shared: your priorities, your daily life and the time you have. Your answers are saved, so you can return without starting again.</p>
+<div class="comp-steps" role="status">
+<div class="comp-step" id="step1"><div class="step-check">✓</div><span>Your answers are saved.</span></div>
+<div class="comp-step" id="step2"><div class="step-check"></div><span>Your individual reading is being prepared.</span></div>
+<div class="comp-step" id="step3"><div class="step-check"></div><span>Your reading will open here when it is ready.</span></div>
+</div>
+</div>
+</main>
+<!-- Scripts -->
+<script src="js/particles.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/quiz-engine.js"></script>
+<footer><div class="policy-footer"><div class="policy-footer-inner"><div><a class="policy-brand" href="index.html">RABBI DAVID</a><p>Ancient Jewish wisdom for modern life.</p><p>Operated by Senter Company LLC.</p><a href="terms.html#section-15">Legal information</a></div><nav aria-label="Support and policies" class="policy-links"><a href="contact.html"><span aria-hidden="true">◎</span> Contact &amp; Support <span aria-hidden="true">→</span></a><a href="terms.html"><span aria-hidden="true">↗</span> Terms &amp; Conditions <span aria-hidden="true">→</span></a><a href="privacy.html"><span aria-hidden="true">↗</span> Privacy Policy <span aria-hidden="true">→</span></a><a href="cookies.html"><span aria-hidden="true">↗</span> Cookie Policy <span aria-hidden="true">→</span></a><a href="terms.html#section-7"><span aria-hidden="true">↗</span> Refund Policy <span aria-hidden="true">→</span></a><a href="help.html"><span aria-hidden="true">?</span> Help &amp; Saved Access <span aria-hidden="true">→</span></a></nav></div><p class="policy-copyright">© 2026 Senter Company LLC. Educational reflections prepared with AI assistance. Individual experiences vary.</p></div></footer></body>
 </html>

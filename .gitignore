@@ -5,3 +5,6 @@ __pycache__/
 antigravity-data/
 evidence/
 *.zip
+.env
+.env.*
+!config.example.json

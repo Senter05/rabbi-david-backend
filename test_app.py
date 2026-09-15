@@ -15,7 +15,7 @@ class JourneyTests(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp=tempfile.TemporaryDirectory();server.AI_ENABLED=False;server.VOICE_ENABLED=False
         server.EMAIL_RESOLVER=lambda domain: True
-        server.init({},cls.tmp.name,8101);cls.http=ThreadingHTTPServer(('127.0.0.1',8101),server.Handler)
+        server.init({'max_requests_per_minute':1000,'max_jobs_per_day':1000},cls.tmp.name,8101);cls.http=ThreadingHTTPServer(('127.0.0.1',8101),server.Handler)
         cls.thread=threading.Thread(target=cls.http.serve_forever,daemon=True);cls.thread.start()
     @classmethod
     def tearDownClass(cls):cls.http.shutdown();cls.http.server_close();cls.tmp.cleanup()

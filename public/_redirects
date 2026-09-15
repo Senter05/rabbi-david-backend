@@ -1,0 +1,2 @@
+/api/*  https://rabbi-david-backend.onrender.com/api/:splat  200!
+/access  https://rabbi-david-backend.onrender.com/access  200!

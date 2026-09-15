@@ -1,0 +1,13 @@
+(()=>{
+ const api=window.RabbiAPI.call;
+ const selected=new URLSearchParams(location.search).get('topic');const topic=document.getElementById('contact-topic');if(topic&&['general','access','technical','refund','privacy'].includes(selected))topic.value=selected;
+ async function submit(form,task){const status=form.querySelector('[role=status]'),button=form.querySelector('button');button.disabled=true;status.textContent='Saving…';try{const result=await task();status.textContent=result.message;if(result.redirect)location.href=result.redirect;}catch(error){status.textContent=error.message;}finally{button.disabled=false;}}
+ document.getElementById('contact-request')?.addEventListener('submit',event=>{event.preventDefault();const form=event.target;submit(form,()=>api('support',Object.fromEntries(new FormData(form))));});
+ document.getElementById('key-recovery')?.addEventListener('submit',event=>{event.preventDefault();submit(event.target,()=>api('recover-key',{key:document.getElementById('recovery-key').value.trim()}));});
+ document.getElementById('email-recovery')?.addEventListener('submit',event=>{event.preventDefault();submit(event.target,()=>api('recover',{email:document.getElementById('recover-email').value.trim()}));});
+ const status=document.getElementById('dataStatus'),dialog=document.getElementById('deleteDialog');
+ document.getElementById('requestDelete')?.addEventListener('click',()=>dialog.showModal());document.getElementById('cancelDelete')?.addEventListener('click',()=>dialog.close());
+ document.getElementById('confirmDelete')?.addEventListener('click',async event=>{event.target.disabled=true;try{const result=await api('delete',{confirmation:'DELETE'});sessionStorage.removeItem('rabbiWelcomeSound');dialog.close();status.textContent=result.message;}catch(error){document.getElementById('deleteStatus').textContent=error.message;}finally{event.target.disabled=false;}});
+ document.getElementById('logoutReading')?.addEventListener('click',async event=>{event.target.disabled=true;try{const result=await api('logout',{});sessionStorage.removeItem('rabbiWelcomeSound');status.textContent=result.message;}catch(error){status.textContent=error.message;}finally{event.target.disabled=false;}});
+ const availability=document.getElementById('supportAvailability');if(availability)api('config').then(config=>{availability.textContent=config.support==='email'?'Requests are queued for the support team. Keep the reference shown after submission.':'Preview support: requests are saved here, but delivery to an external support inbox is not connected yet.';}).catch(()=>{availability.textContent='Support availability could not be checked. You can retry sending your request.';});
+})();

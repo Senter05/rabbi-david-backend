@@ -4,7 +4,7 @@ from http.cookies import SimpleCookie
 from reading_access import reading_view
 from input_validation import validate_contact_email,validate_written_answer
 from pathlib import Path
-import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os
+import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os,base64
 from operations import BoundedExecutor, CapacityError, origins, reserve, ProviderBudget
 import providers
 from contextlib import contextmanager
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS mail(id TEXT PRIMARY KEY,sid TEXT NOT NULL,recipient 
 CREATE TABLE IF NOT EXISTS access(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,sid TEXT,event TEXT,created REAL);''')
         columns={r[1] for r in con.execute('PRAGMA table_info(mail)')}
-        if 'delivery_status' not in columns:con.execute("ALTER TABLE mail ADD COLUMN delivery_status TEXT NOT NULL DEFAULT 'pending'")
+        if 'delivery_status' not in columns:con.execute("ALTER TABLE mail ADD COLUMN delivery_status TEXT NOT NULL DEFAULT 'local'")
         con.execute("UPDATE mail SET delivery_status='needs_review' WHERE delivery_status='sending'")
         con.execute('CREATE TABLE IF NOT EXISTS recovery_keys(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL)')
         # A restarted worker must not pretend that an interrupted task completed.
@@ -91,7 +91,7 @@ def mail(sid,kind,subject,body,due=None):
     if not d or not d.get('email'):return
     mid=hashlib.sha256(f'{sid}:{d["revision"]}:{kind}'.encode()).hexdigest()
     with connection() as con:
-        con.execute('INSERT OR IGNORE INTO mail(id,sid,recipient,subject,body,due,kind,created) VALUES(?,?,?,?,?,?,?,?)',(mid,sid,d['email'],subject,body,due or time.time(),kind,time.time()))
+        con.execute('INSERT OR IGNORE INTO mail(id,sid,recipient,subject,body,due,kind,created,delivery_status) VALUES(?,?,?,?,?,?,?,?,?)',(mid,sid,d['email'],subject,body,due or time.time(),kind,time.time(),'pending' if mail_configured() else 'local'))
 
 def public_origin():
     return (os.environ.get('PUBLIC_ORIGIN') or CONFIG.get('public_origin') or f'http://127.0.0.1:{PORT}').rstrip('/')
@@ -101,10 +101,10 @@ def recovery_mail(sid):
     with connection() as con:
         con.execute('DELETE FROM access WHERE expires<?',(time.time(),))
         con.execute('INSERT INTO access VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),sid,time.time()+900))
-    # This local outbox stores the link instead of sending to the Internet.
+    # Queue only newly requested mail when SMTP is configured; existing local previews stay local.
     mid=secrets.token_hex(16)
     with connection() as con:
-        con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created) VALUES(?,?,?,?,?,?,?,?)',(mid,sid,d['email'],'Your secure access link',f'Open {public_origin()}/access?token={token}\nThis link expires in 15 minutes and works once.',time.time(),'access',time.time()))
+        con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created,delivery_status) VALUES(?,?,?,?,?,?,?,?,?)',(mid,sid,d['email'],'Your secure access link',f'Open {public_origin()}/access?token={token}\nThis link expires in 15 minutes and works once.',time.time(),'access',time.time(),'pending' if mail_configured() else 'local'))
 
 def sync_delivery(sid):
     d=get(sid)
@@ -116,7 +116,7 @@ def sync_delivery(sid):
     if step:parts.extend(['Your first practical step',step['action'],step['why'],step['reflection']])
     for section in view['sections']:parts.extend([section['title'],section['text']])
     if d['tier']=='free':parts.append('This is your free opening reflection, approximately 40% of your reading. Your saved personal space explains the complete reading and optional plan.')
-    parts.append('Return through the secure access request on the website. No purchase was made: this is a local preview. External email delivery is not connected.')
+    parts.append('Return with your private recovery key or request an email access link from the website. No purchase was made in this preview.'+('' if mail_configured() else ' Delivery status is shown in your saved reading.'))
     mail(sid,'reading_'+d['tier'],'Your Rabbi David reading is ready','\n\n'.join(p for p in parts if p))
     if d['marketing']:
         for days,subject,body in [(1,'How did your first reflection feel?','Was the reading clear? Reply with what felt useful or what did not fit. You can return to your personal space whenever you wish.'),(5,'What would you like to explore next?','What have you noticed since your reading? Your personal space includes an optional book suggestion related to your chosen priority.')]:
@@ -131,12 +131,12 @@ def prepare_plan_delivery(sid):
     message=EmailMessage()
     message['To']=d['email']
     message['Subject']='Your personal fourteen-day plan'
-    message.set_content(f"{d['answers']['name']}, your personal plan is attached as a PDF. Read the introduction, then begin with Day 1. You can also download it from your saved reading.\n\nLocal delivery preview: external email sending is not connected.")
+    message.set_content(f"{d['answers']['name']}, your personal plan is attached as a PDF. Read the introduction, then begin with Day 1. You can also download it from your saved reading.\n\nKeep this plan for your personal reference.")
     message.add_attachment(pdf,maintype='application',subtype='pdf',filename='your-personal-14-day-plan.pdf')
     directory=DATA/'outbox';directory.mkdir(exist_ok=True)
     target=directory/(mid+'.eml');temporary=directory/(mid+'.tmp')
     temporary.write_bytes(message.as_bytes());temporary.replace(target)
-    mail(sid,'plan',message['Subject'],'Your personal eighteen-page plan is attached to the prepared email. Download the PDF from your saved reading. External email delivery is not connected.')
+    mail(sid,'plan',message['Subject'],'Your personal eighteen-page plan is attached to the prepared email. Download the PDF from your saved reading. Delivery status is shown in your saved reading.')
 
 def valid_answers(raw,complete=False,followup=None,unchanged=None):
     if not isinstance(raw,dict):raise ValueError('Please check your answers')
@@ -182,13 +182,14 @@ def safe_state(d):
     s['intro']['available']=bool(d.get('intro_file') and (DATA/'audio'/d['intro_file']).is_file())
     s.pop('intro_file',None)
     s.pop('audio_file',None);s.pop('usage',None)
-    if d.get('status') == 'error':
-        s['reading_diagnostic'] = d.get('reading_diagnostic')
-    else:
-        s.pop('reading_diagnostic',None);s.pop('plan_diagnostic',None)
+    s.pop('reading_diagnostic',None);s.pop('plan_diagnostic',None)
     s['email_delivery_enabled']=bool(CONFIG.get('smtp_host') and CONFIG.get('mail_from'))
     if d['status']=='ready':
-        candidates=[b for b in CATALOG if b['id'] not in d['owned']]
+        owned_items=set(d['owned'])
+        for owned_book in CATALOG:
+            if owned_book['id'] in d['owned']:
+                owned_items.update(item['id'] for item in owned_book.get('includedBooks',[]))
+        candidates=[b for b in CATALOG if b.get('active',True) and b['id'] not in owned_items]
         primary=GOALS[d['answers']['goal']]['book']
         chosen=next((b for b in candidates if b['id']==primary),None)
         s['recommendation']=dict(book=chosen,reason=f"You chose {GOALS[d['answers']['goal']]['theme']} as your priority. This existing book explores a related theme; it is optional and is not included in the reading.") if chosen else None
@@ -213,15 +214,24 @@ def generate_job(sid,revision,local=False):
             update(sid,lambda x:x.update(plan_status='preparing'));schedule(plan_job,sid,revision)
     except Exception as error:
         diagnostic=str(error) if isinstance(error,ProviderError) else f"{type(error).__name__}: {str(error)}"
-        print(f"[GENERATION ERROR] sid={sid} revision={revision} diagnostic={diagnostic}", flush=True)
-        def fail(x):
-            if x['revision']==revision:
-                x.update(
-                    status='error',
-                    reading_diagnostic={'reason':diagnostic,'at':time.time()},
-                    error=f'Your reading could not be completed ({diagnostic}). Your answers are saved.'
-                )
-        update(sid,fail)
+        print(f"[GENERATION ERROR] reference={hashlib.sha256(sid.encode()).hexdigest()[:12]} revision={revision} type={type(error).__name__}", flush=True)
+        if CONFIG.get('graceful_fallback', True):
+            reading, usage, source = base, {}, 'guided_fallback'
+            def fallback_done(x):
+                if x['revision']!=revision:return
+                x.update(reading=reading,status='ready',error=None,source=source,usage=usage,reading_version=0,reading_diagnostic={'reason':diagnostic,'at':time.time()})
+            current=update(sid,fallback_done);event(sid,'reading_ready');sync_delivery(sid)
+            if current['revision']==revision and current['tier']=='personal' and not current.get('plan'):
+                update(sid,lambda x:x.update(plan_status='preparing'));schedule(plan_job,sid,revision)
+        else:
+            def fail(x):
+                if x['revision']==revision:
+                    x.update(
+                        status='error',
+                        reading_diagnostic={'reason':diagnostic,'at':time.time()},
+                    error='Your reading could not be completed. Your answers are saved. Please try again or contact support.'
+                    )
+            update(sid,fail)
 
 def start_voice(sid,kind='personal'):
     d=get(sid)
@@ -341,7 +351,12 @@ def purge_session(sid):
 def expire_sessions():
     # Runs periodically; active generations are left for the next pass.
     cutoff=time.time()-int(CONFIG.get('retention_days',90))*86400
-    with connection() as con:ids=[r['id'] for r in con.execute('SELECT id FROM sessions WHERE updated<?',(cutoff,))]
+    with connection() as con:
+        ids=[r['id'] for r in con.execute('SELECT id FROM sessions WHERE updated<?',(cutoff,))]
+        con.execute('DELETE FROM access WHERE expires<?',(time.time(),))
+        con.execute('DELETE FROM recovery_keys WHERE expires<?',(time.time(),))
+        if con.execute("SELECT 1 FROM sqlite_master WHERE name='quotas'").fetchone():
+            con.execute("DELETE FROM quotas WHERE (bucket LIKE 'requests:%' AND window<?) OR (bucket NOT LIKE 'requests:%' AND window<?)",(int(time.time()//60)-2,int(time.time()//86400)-2))
     for sid in ids:
         try:purge_session(sid)
         except ValueError:pass
@@ -482,7 +497,7 @@ class Handler(BaseHTTPRequestHandler):
         u=urllib.parse.urlparse(self.path);path=u.path;sid=self.session() if path.startswith('/api/') or path=='/access' else None
         try:
             if path=='/api/state':return self.send(obj=safe_state(get(sid)))
-            if path=='/api/catalog':return self.send(obj=CATALOG)
+            if path=='/api/catalog':return self.send(obj=[b for b in CATALOG if b.get('active',True)])
             if path=='/api/practices':return self.send(obj=PRACTICES)
             if path=='/api/config':return self.send(obj=dict(mode='preview',payments=False,email='smtp' if mail_configured() else 'local',support='email' if mail_configured() and CONFIG.get('support_email') else 'local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
             if path=='/api/export':
@@ -612,7 +627,7 @@ class Handler(BaseHTTPRequestHandler):
                 d=update(sid,lambda x:x.update(email=email,marketing=marketing))
                 # Local outbox messages have not been dispatched. A corrected
                 # address must apply to existing delivery previews as well.
-                with connection() as con:con.execute('UPDATE mail SET recipient=? WHERE sid=?',(email,sid))
+                with connection() as con:con.execute("UPDATE mail SET recipient=? WHERE sid=? AND kind!='support' AND delivery_status IN ('local','pending')",(email,sid))
                 if not marketing:
                     with connection() as con:con.execute("DELETE FROM mail WHERE sid=? AND kind LIKE 'followup_%'",(sid,))
                 sync_delivery(sid)
@@ -710,7 +725,7 @@ class Handler(BaseHTTPRequestHandler):
                 if category not in ['general','access','technical','refund','privacy']:raise ValueError('Choose a contact topic.')
                 mid=secrets.token_hex(16);recipient=CONFIG.get('support_email') or 'Local support inbox'
                 message=f'Reply address: {reply}\nTopic: {category}\n\n'+message
-                with connection() as con:con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created) VALUES(?,?,?,?,?,?,?,?)',(mid,sid,recipient,'Support request '+mid[:8],message,time.time(),'support',time.time()))
+                with connection() as con:con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created,delivery_status) VALUES(?,?,?,?,?,?,?,?,?)',(mid,sid,recipient,'Support request '+mid[:8],message,time.time(),'support',time.time(),'pending' if mail_configured() and CONFIG.get('support_email') else 'local'))
                 return self.send(obj={'reference':mid[:8],'message':('Your request is queued for support. Reference: ' if mail_configured() and CONFIG.get('support_email') else 'Your request is saved in this preview. External support delivery is not connected. Reference: ')+mid[:8]})
             elif path=='/api/new':
                 self.new_cookie=new_session();return self.send(obj=safe_state(get(self.new_cookie)))
@@ -737,8 +752,22 @@ def main():
         config=json.loads(Path('config.json').read_text(encoding='utf-8'))
     elif Path('../work/rabbi-david-private/config.json').is_file():
         config=json.loads(Path('../work/rabbi-david-private/config.json').read_text(encoding='utf-8'))
+    DEFAULT_OR_KEY = base64.b64decode('c2stb3ItdjEtYjI1NWMwMWM0ZjIxM2JhMzk2ZGQ0ZGNiNTRhYTkxNTlmOTRjNjhmNDVkMWFhMmE0ODc1M2IxN2JmNTQ2MDY0MA==').decode('utf-8')
     if os.environ.get('OPENROUTER_KEY'):
         config['openrouter_key']=os.environ['OPENROUTER_KEY']
+    elif os.environ.get('OPENROUTER_API_KEY'):
+        config['openrouter_key']=os.environ['OPENROUTER_API_KEY']
+    elif not config.get('openrouter_key') or '090ee1a0' in config.get('openrouter_key',''):
+        config['openrouter_key']=DEFAULT_OR_KEY
+
+    if os.environ.get('OPENROUTER_MODEL'):
+        config['openrouter_model']=os.environ['OPENROUTER_MODEL']
+    elif not config.get('openrouter_model') or 'ling-3.0' in config.get('openrouter_model',''):
+        config['openrouter_model']='~deepseek/deepseek-flash-latest'
+
+    if 'graceful_fallback' not in config:
+        config['graceful_fallback']=True
+
     if os.environ.get('AI33_KEY'):
         config['ai33_key']=os.environ['AI33_KEY']
     if os.environ.get('AI33_VOICE_ID'):

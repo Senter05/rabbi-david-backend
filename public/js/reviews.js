@@ -38,7 +38,7 @@ function createReviewCardHTML(r) {
   return `
     <article class="review-card">
       <div class="review-author-row">
-        <img class="review-avatar" src="${r.avatar}" alt="${r.name}" loading="lazy" onerror="this.src='assets/logo.webp'"/>
+        <img class="review-avatar" src="${r.avatar}" alt="${r.name}" loading="lazy"/>
         <div class="author-info">
           <div class="author-name-badge">
             <span class="author-name">${r.name}</span>
@@ -58,7 +58,7 @@ function createReviewCardHTML(r) {
       <p class="review-body">${r.body}</p>
       <div class="review-footer">
         <span>Was this review helpful?</span>
-        <button class="helpful-btn" onclick="this.textContent='👍 Helpful (${r.helpful + 1})'; this.disabled=true;">
+        <button class="helpful-btn" data-helpful="${r.helpful}">
           👍 Helpful (${r.helpful})
         </button>
       </div>
@@ -322,3 +322,7 @@ function renderIndexReviews(container, allReviews) {
 
   update();
 }
+
+// Local helpful interaction; the review dataset and carousel remain unchanged.
+document.addEventListener('click',event=>{const button=event.target.closest('[data-helpful]');if(!button||button.disabled)return;button.textContent='👍 Helpful ('+(Number(button.dataset.helpful)+1)+')';button.disabled=true;});
+document.addEventListener('error',event=>{const image=event.target;if(image.matches?.('.review-avatar')&&!image.dataset.fallback){image.dataset.fallback='yes';image.src='assets/logo.webp';}},true);

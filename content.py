@@ -41,12 +41,12 @@ def route(answers):
     return base
 
 GOALS = {
- 'calm':dict(title='A calmer relationship with abundance',theme='calm',book='morning',insight='You are looking for a little more steadiness, rather than another demand on your attention.',action='Notice one moment when you feel settled. Write what made that moment different.'),
- 'direction':dict(title='Clearer priorities for everyday life',theme='priorities',book='morning',insight='Your answers point toward making room for what matters, one deliberate choice at a time.',action='Write down one priority you want to give attention to, and one task that can wait.'),
+ 'calm':dict(title='A calmer relationship with abundance',theme='calm',book='rituals',insight='You are looking for a little more steadiness, rather than another demand on your attention.',action='Notice one moment when you feel settled. Write what made that moment different.'),
+ 'direction':dict(title='Clearer priorities for everyday life',theme='priorities',book='rituals',insight='Your answers point toward making room for what matters, one deliberate choice at a time.',action='Write down one priority you want to give attention to, and one task that can wait.'),
  'family':dict(title='Abundance in the life you share',theme='connection',book='legacy',insight='For you, abundance includes the quality of the support and understanding within your family.',action='Write one question you could ask a family member with the intention of listening.'),
  'legacy':dict(title='The legacy only you can share',theme='legacy',book='legacy',insight='Your priority is what you can pass on: experience, stories, values and thoughtful habits.',action='Write one short story about a value you learned through experience.'),
- 'work':dict(title='Purpose in the work of your hands',theme='purpose',book='ceo',insight='You want your everyday work and your values to feel more connected.',action='Name one value you want your next ordinary work decision to express.'),
- 'learning':dict(title='Learning with purpose',theme='learning',book='eliel',insight='Curiosity is a worthwhile starting point. You do not need to invent a problem to explore a new perspective.',action='Choose one question about abundance you would like to understand more clearly.')
+ 'work':dict(title='Purpose in the work of your hands',theme='purpose',book='rituals',insight='You want your everyday work and your values to feel more connected.',action='Name one value you want your next ordinary work decision to express.'),
+ 'learning':dict(title='Learning with purpose',theme='learning',book='rituals',insight='Curiosity is a worthwhile starting point. You do not need to invent a problem to explore a new perspective.',action='Choose one question about abundance you would like to understand more clearly.')
 }
 
 PRACTICES = [

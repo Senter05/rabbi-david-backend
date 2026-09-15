@@ -14,7 +14,7 @@ if not exist "..\..\work\rabbi-david-private\config.json" (
   pause
   exit /b 1
 )
-powershell -NoProfile -Command "Start-Process -FilePath $env:RD_PYTHON -ArgumentList 'server.py --config ../../work/rabbi-david-private/config.json --data ../../work/rabbi-david-private/antigravity-data --port 8100 --enable-voice' -WorkingDirectory (Get-Location).Path -WindowStyle Hidden"
+powershell -NoProfile -Command "Start-Process -FilePath $env:RD_PYTHON -ArgumentList 'server.py --config ../../work/rabbi-david-private/config.json --data ../../work/rabbi-david-private/antigravity-data --port 8100' -WorkingDirectory (Get-Location).Path -WindowStyle Hidden"
 for /l %%n in (1,1,20) do (
   "%RD_PYTHON%" -c "import time,urllib.request,json; time.sleep(.5); d=json.load(urllib.request.urlopen('http://127.0.0.1:8100/api/config',timeout=1)); assert d.get('mode')=='preview'" >nul 2>&1
   if not errorlevel 1 goto abrir

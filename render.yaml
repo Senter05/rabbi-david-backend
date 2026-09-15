@@ -13,7 +13,7 @@ services:
       - key: PRODUCTION
         value: "1"
       - key: PUBLIC_ORIGIN
-        sync: false
+        value: https://rabbidavid.org
       - key: DATA_DIR
         sync: false
       - key: ENABLE_VOICE

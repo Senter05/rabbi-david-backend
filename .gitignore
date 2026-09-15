@@ -7,4 +7,5 @@ evidence/
 *.zip
 .env
 .env.*
+config.json
 !config.example.json

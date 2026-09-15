@@ -580,6 +580,7 @@ class Handler(BaseHTTPRequestHandler):
                     base=lambda values:{k:v for k,v in values.items() if k not in ['name','personal_detail']}
                     if x.get('followup') and base(a)!=base(x['answers']):x.pop('followup',None);a.pop('personal_detail',None)
                     x.update(answers=a,step=min(step,len(route(a))+(1 if x.get('followup') else 0)))
+                    if x['status']=='error':x.update(status='draft',error=None,generation_progress=None)
                 d=update(sid,save)
             elif path=='/api/followup':
                 valid_answers(d['answers'],True)

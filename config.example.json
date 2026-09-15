@@ -1,0 +1,14 @@
+{
+  "public_origin": "",
+  "free_testing": false,
+  "support_email": "",
+  "mail_from": "",
+  "smtp_host": "",
+  "smtp_port": 587,
+  "retention_days": 90,
+  "voice_timeout_seconds": 1800,
+  "max_jobs_per_day": 20,
+  "max_requests_per_minute": 120,
+  "max_text_requests_per_day": 100,
+  "max_voice_requests_per_day": 10
+}

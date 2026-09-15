@@ -5,7 +5,8 @@ from reading_access import reading_view
 from input_validation import validate_contact_email,validate_written_answer
 from pathlib import Path
 import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os
-from concurrent.futures import ThreadPoolExecutor
+from operations import BoundedExecutor, CapacityError, origins, reserve, ProviderBudget
+import providers
 from contextlib import contextmanager
 from content import VERSION,route,GOALS,PRACTICES,fallback_reading,draft_plan
 from providers import generate_reading,generate_plan,generate_followup,submit_voice,poll_voice,download_audio,ProviderError
@@ -14,7 +15,7 @@ from source_library import SOURCE_BY_ID
 from email.message import EmailMessage
 
 ROOT=Path(__file__).resolve().parent
-LOCK=threading.RLock();POOL=ThreadPoolExecutor(max_workers=3);STOP=threading.Event()
+LOCK=threading.RLock();POOL=BoundedExecutor();STOP=threading.Event()
 CONFIG={};DATA=None;DB=None;PORT=8100;AI_ENABLED=True;VOICE_ENABLED=False
 EMAIL_RESOLVER=None
 CATALOG=json.loads((ROOT/'catalog.json').read_text(encoding='utf-8'))
@@ -28,15 +29,19 @@ def connection():
 
 def init(config,data,port=8100):
     global CONFIG,DATA,DB,PORT
-    CONFIG=config;DATA=Path(data);DATA.mkdir(parents=True,exist_ok=True);(DATA/'audio').mkdir(exist_ok=True);DB=DATA/'state.sqlite';PORT=port
+    CONFIG=config;origins(config,port);DATA=Path(data);DATA.mkdir(parents=True,exist_ok=True);(DATA/'audio').mkdir(exist_ok=True);DB=DATA/'state.sqlite';PORT=port
     with connection() as con:
         con.executescript('''CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,data TEXT NOT NULL,updated REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS mail(id TEXT PRIMARY KEY,sid TEXT NOT NULL,recipient TEXT NOT NULL,subject TEXT NOT NULL,body TEXT NOT NULL,due REAL NOT NULL,kind TEXT NOT NULL,created REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS access(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,sid TEXT,event TEXT,created REAL);''')
+        columns={r[1] for r in con.execute('PRAGMA table_info(mail)')}
+        if 'delivery_status' not in columns:con.execute("ALTER TABLE mail ADD COLUMN delivery_status TEXT NOT NULL DEFAULT 'pending'")
+        con.execute("UPDATE mail SET delivery_status='needs_review' WHERE delivery_status='sending'")
+        con.execute('CREATE TABLE IF NOT EXISTS recovery_keys(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL)')
         # A restarted worker must not pretend that an interrupted task completed.
         for row in con.execute('SELECT id,data FROM sessions').fetchall():
-            d=json.loads(row['data'])
+            d=json.loads(row['data']);d.pop('followup_pending',None)
             if d.get('plan_status')=='preparing':
                 d.update(plan=draft_plan(d['answers']),plan_status='guided_alternative',plan_source='guided')
             if d.get('voice',{}).get('status')=='submitting':
@@ -49,6 +54,8 @@ CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,sid TEXT,event TEXT,cre
                 d['status']='error';d['error']='Preparation was interrupted. Your answers are safe; please try again.'
             con.execute('UPDATE sessions SET data=? WHERE id=?',(json.dumps(d),row['id']))
 
+    providers.REQUEST_GUARD=ProviderBudget(DB,CONFIG)
+
 def blank():
     return dict(version=VERSION,started=False,answers={},step=0,revision=0,status='draft',tier='free',reading=None,plan=None,completed_days=[],email='',marketing=False,owned=[],voice={'status':'not_requested'},intro={'status':'not_requested'},created=time.time())
 
@@ -56,7 +63,6 @@ def valid_identity(name,email):
     if not isinstance(name,str) or not isinstance(email,str):raise ValueError('Please enter your first name and email address.')
     name=name.strip();email=email.strip().lower()
     if not 1<=len(name)<=60 or not any(c.isalpha() for c in name) or any(ord(c)<32 or c in '<>' for c in name):raise ValueError('Please enter your first name (up to 60 characters).')
-    if len(email)>254 or len(email.split('@')[0])>64 or not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+",email) or '..' in email or email.startswith('.') or '.@' in email:raise ValueError('Please enter a valid email address.')
     return name,validate_contact_email(email,resolver=EMAIL_RESOLVER)
 
 def new_session():
@@ -85,7 +91,10 @@ def mail(sid,kind,subject,body,due=None):
     if not d or not d.get('email'):return
     mid=hashlib.sha256(f'{sid}:{d["revision"]}:{kind}'.encode()).hexdigest()
     with connection() as con:
-        con.execute('INSERT OR IGNORE INTO mail VALUES(?,?,?,?,?,?,?,?)',(mid,sid,d['email'],subject,body,due or time.time(),kind,time.time()))
+        con.execute('INSERT OR IGNORE INTO mail(id,sid,recipient,subject,body,due,kind,created) VALUES(?,?,?,?,?,?,?,?)',(mid,sid,d['email'],subject,body,due or time.time(),kind,time.time()))
+
+def public_origin():
+    return (os.environ.get('PUBLIC_ORIGIN') or CONFIG.get('public_origin') or f'http://127.0.0.1:{PORT}').rstrip('/')
 
 def recovery_mail(sid):
     d=get(sid); token=secrets.token_urlsafe(32)
@@ -95,7 +104,7 @@ def recovery_mail(sid):
     # This local outbox stores the link instead of sending to the Internet.
     mid=secrets.token_hex(16)
     with connection() as con:
-        con.execute('INSERT INTO mail VALUES(?,?,?,?,?,?,?,?)',(mid,sid,d['email'],'Your secure access link',f'Open http://127.0.0.1:{PORT}/access?token={token}\nThis link expires in 15 minutes and works once.',time.time(),'access',time.time()))
+        con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created) VALUES(?,?,?,?,?,?,?,?)',(mid,sid,d['email'],'Your secure access link',f'Open {public_origin()}/access?token={token}\nThis link expires in 15 minutes and works once.',time.time(),'access',time.time()))
 
 def sync_delivery(sid):
     d=get(sid)
@@ -172,7 +181,12 @@ def safe_state(d):
     s['intro']={k:v for k,v in intro.items() if k in ['status','error','progress']}
     s['intro']['available']=bool(d.get('intro_file') and (DATA/'audio'/d['intro_file']).is_file())
     s.pop('intro_file',None)
-    s.pop('audio_file',None);s.pop('usage',None);s.pop('reading_diagnostic',None)
+    s.pop('audio_file',None);s.pop('usage',None)
+    if d.get('status') == 'error':
+        s['reading_diagnostic'] = d.get('reading_diagnostic')
+    else:
+        s.pop('reading_diagnostic',None);s.pop('plan_diagnostic',None)
+    s['email_delivery_enabled']=bool(CONFIG.get('smtp_host') and CONFIG.get('mail_from'))
     if d['status']=='ready':
         candidates=[b for b in CATALOG if b['id'] not in d['owned']]
         primary=GOALS[d['answers']['goal']]['book']
@@ -196,11 +210,17 @@ def generate_job(sid,revision,local=False):
             x.update(reading=reading,status='ready',error=None,source=source,usage=usage,reading_version=3 if source=='ai' else 0)
         current=update(sid,done);event(sid,'reading_ready');sync_delivery(sid)
         if current['revision']==revision and current['tier']=='personal' and not current.get('plan') and (source=='ai' or not current.get('auto_audio')):
-            update(sid,lambda x:x.update(plan_status='preparing'));POOL.submit(plan_job,sid,revision)
+            update(sid,lambda x:x.update(plan_status='preparing'));schedule(plan_job,sid,revision)
     except Exception as error:
-        diagnostic=str(error) if isinstance(error,ProviderError) else type(error).__name__
+        diagnostic=str(error) if isinstance(error,ProviderError) else f"{type(error).__name__}: {str(error)}"
+        print(f"[GENERATION ERROR] sid={sid} revision={revision} diagnostic={diagnostic}", flush=True)
         def fail(x):
-            if x['revision']==revision:x.update(status='error',reading_diagnostic={'reason':diagnostic,'at':time.time()},error='Your reading could not be completed after an automatic retry. Your answers are saved. Please try again; you do not need to repeat the test.')
+            if x['revision']==revision:
+                x.update(
+                    status='error',
+                    reading_diagnostic={'reason':diagnostic,'at':time.time()},
+                    error=f'Your reading could not be completed ({diagnostic}). Your answers are saved.'
+                )
         update(sid,fail)
 
 def start_voice(sid,kind='personal'):
@@ -228,7 +248,7 @@ def start_voice(sid,kind='personal'):
     update(sid,lambda x:x.update(voice={'status':'submitting','script':script,'kind':kind}))
     try:
         task=submit_voice(CONFIG,script,'rabbi-reading-'+secrets.token_hex(6))
-        update(sid,lambda x:x['voice'].update(status='processing',task_id=task))
+        update(sid,lambda x:x['voice'].update(status='processing',task_id=task,submitted_at=time.time()))
     except Exception:
         update(sid,lambda x:x['voice'].update(status='needs_review',error='Audio submission needs a check before trying again. Your written reading is available.'))
 
@@ -260,7 +280,7 @@ def queue_preview_audio(sid):
         valid_answers(d['answers'],True,followup=d.get('followup'))
         if d['voice']['status']=='not_requested' and not d['voice'].get('task_id'):
             update(sid,lambda x:x['voice'].update(status='queued'))
-            POOL.submit(start_voice,sid)
+            schedule(start_voice,sid)
 
 def enable_free_preview(sid):
     if CONFIG.get('free_testing') is not True:raise ValueError('Free testing is not enabled')
@@ -271,10 +291,10 @@ def enable_free_preview(sid):
         update(sid,lambda x:x.update(tier='personal',auto_audio=True))
         if not d.get('plan') and d.get('plan_status')!='preparing':
             update(sid,lambda x:x.update(plan_status='preparing'))
-            POOL.submit(plan_job,sid,d['revision'])
+            schedule(plan_job,sid,d['revision'])
         if VOICE_ENABLED and d.get('intro',{}).get('status','not_requested')=='not_requested':
             update(sid,lambda x:x.update(intro={'status':'queued'}))
-            POOL.submit(intro_job,sid)
+            schedule(intro_job,sid)
     queue_preview_audio(sid)
     sync_delivery(sid)
     return get(sid)
@@ -285,85 +305,190 @@ def intro_job(sid):
     update(sid,lambda x:x.update(intro={'status':'submitting','script':script}))
     try:
         task=submit_voice(CONFIG,script,'rabbi-welcome-'+secrets.token_hex(6))
-        update(sid,lambda x:x['intro'].update(status='processing',task_id=task))
+        update(sid,lambda x:x['intro'].update(status='processing',task_id=task,submitted_at=time.time()))
     except Exception:update(sid,lambda x:x['intro'].update(status='needs_review',error='The spoken welcome needs a provider check. Your plan preparation continues.'))
 
+def schedule(fn,sid,*args):
+    try:
+        d=get(sid)
+        if not d:raise ValueError('Session no longer available')
+        identity=hashlib.sha256((d.get('email') or sid).encode()).hexdigest()
+        reserve(DB,'jobs:'+identity,int(CONFIG.get('max_jobs_per_day',20)))
+        return POOL.submit(fn,sid,*args)
+    except CapacityError:
+        def reset(x):
+            if fn==generate_job:x.update(status='error',error='Preparation is busy. Please try again shortly.')
+            elif fn==plan_job:x.update(plan_status='guided_alternative',plan=x.get('plan') or draft_plan(x['answers']),plan_source='guided')
+            elif fn==start_voice:x.update(voice={'status':'not_requested'})
+            elif fn==intro_job:x.update(intro={'status':'not_requested'})
+        update(sid,reset)
+        raise
+
+def purge_session(sid):
+    with LOCK:
+        d=get(sid)
+        if not d:return
+        if d.get('status')=='generating' or d.get('plan_status')=='preparing' or d.get('followup_pending') or any(d.get(k,{}).get('status') in ['queued','submitting','processing','download_pending'] for k in ['voice','intro']):
+            raise ValueError('Please wait for preparation to finish before deleting this reading.')
+        with connection() as con:
+            ids=[r['id'] for r in con.execute('SELECT id FROM mail WHERE sid=?',(sid,))]
+            for table in ['mail','access','events','recovery_keys']:con.execute(f'DELETE FROM {table} WHERE sid=?',(sid,))
+            con.execute('DELETE FROM sessions WHERE id=?',(sid,))
+        for name in [d.get('audio_file'),d.get('intro_file')]:
+            if name and Path(name).name==name:(DATA/'audio'/name).unlink(missing_ok=True)
+        for mid in ids:(DATA/'outbox'/(mid+'.eml')).unlink(missing_ok=True)
+
+def expire_sessions():
+    # Runs periodically; active generations are left for the next pass.
+    cutoff=time.time()-int(CONFIG.get('retention_days',90))*86400
+    with connection() as con:ids=[r['id'] for r in con.execute('SELECT id FROM sessions WHERE updated<?',(cutoff,))]
+    for sid in ids:
+        try:purge_session(sid)
+        except ValueError:pass
+
+def process_voice(sid,field):
+    d=get(sid)
+    if not d:return
+    v=d.get(field,{})
+    if v.get('status') not in ['processing','download_pending']:return
+    now=time.time();started=v.get('submitted_at',now)
+    if not v.get('submitted_at'):update(sid,lambda x:x[field].update(submitted_at=now))
+    if now-started>int(CONFIG.get('voice_timeout_seconds',1800)):
+        update(sid,lambda x:x[field].update(status='needs_review',error='Audio is taking longer than expected. Contact support with your reading open. The existing recording will be checked before any retry.'))
+        event(sid,'voice_timeout:'+field);return
+    if now<v.get('next_poll_at',0):return
+    try:
+        task=poll_voice(CONFIG,v['task_id'])
+        if task.get('status')=='error':
+            update(sid,lambda x:x[field].update(status='needs_review',error='The recording needs a support check. Your written reading is available.'));event(sid,'voice_provider_error:'+field)
+        elif task.get('status')=='done':
+            name=hashlib.sha256(sid.encode()).hexdigest()+('-welcome.mp3' if field=='intro' else '.mp3')
+            update(sid,lambda x:x[field].update(status='download_pending'))
+            download_audio(task['metadata']['audio_url'],DATA/'audio'/name)
+            def done(x):
+                x['intro_file' if field=='intro' else 'audio_file']=name
+                x[field].update(status='ready',progress=100,credit_cost=task.get('credit_cost'),poll_errors=0)
+            update(sid,done)
+        else:update(sid,lambda x:x[field].update(progress=task.get('progress',0),poll_errors=0,next_poll_at=now+8))
+    except Exception:
+        count=v.get('poll_errors',0)+1
+        update(sid,lambda x:x[field].update(poll_errors=count,next_poll_at=now+min(300,8*2**min(count,6))))
+        event(sid,'voice_poll_error:'+field)
+
+def mail_configured():return bool(CONFIG.get('smtp_host') and CONFIG.get('mail_from'))
+
+def dispatch_mail_once():
+    if not mail_configured():return
+    from email.parser import BytesParser
+    import smtplib,ssl
+    with LOCK:
+        with connection() as con:
+            row=con.execute("SELECT * FROM mail WHERE due<=? AND delivery_status='pending' ORDER BY created LIMIT 1",(time.time(),)).fetchone()
+            if not row:return
+            con.execute("UPDATE mail SET delivery_status='sending' WHERE id=?",(row['id'],))
+    try:
+        attachment=DATA/'outbox'/(row['id']+'.eml')
+        message=BytesParser().parsebytes(attachment.read_bytes()) if row['kind']=='plan' and attachment.is_file() else EmailMessage()
+        if not message.get('To'):
+            message['To']=row['recipient'];message['Subject']=row['subject'];message.set_content(row['body'])
+        message['From']=CONFIG['mail_from'];message['Message-ID']='<'+row['id']+'@'+CONFIG['mail_from'].split('@')[-1]+'>'
+        with smtplib.SMTP(CONFIG['smtp_host'],int(CONFIG.get('smtp_port',587)),timeout=20) as client:
+            client.starttls(context=ssl.create_default_context())
+            if CONFIG.get('smtp_username'):client.login(CONFIG['smtp_username'],CONFIG.get('smtp_password',''))
+            client.send_message(message)
+        status='sent'
+    except Exception:status='needs_review'
+    with connection() as con:con.execute('UPDATE mail SET delivery_status=? WHERE id=?',(status,row['id']))
+
+
 def poll_voices():
+    maintenance=0
     while not STOP.wait(8):
-        with connection() as con:rows=con.execute('SELECT id,data FROM sessions').fetchall()
+        with connection() as con:rows=con.execute('SELECT id FROM sessions').fetchall()
         for row in rows:
-            d=json.loads(row['data']);v=d.get('voice',{})
-            intro=d.get('intro',{})
-            if intro.get('status') in ['processing','download_pending']:
-                try:
-                    task=poll_voice(CONFIG,intro['task_id'])
-                    if task.get('status')=='done':
-                        name=hashlib.sha256(row['id'].encode()).hexdigest()+'-welcome.mp3'
-                        update(row['id'],lambda x:x['intro'].update(status='download_pending'))
-                        download_audio(task['metadata']['audio_url'],DATA/'audio'/name)
-                        def intro_ready(x):
-                            x.update(intro_file=name);x['intro'].update(status='ready',credit_cost=task.get('credit_cost'))
-                        update(row['id'],intro_ready)
-                    elif task.get('status')=='error':update(row['id'],lambda x:x['intro'].update(status='error',error='The spoken welcome could not be prepared. Your reading is unaffected.'))
-                except Exception:pass
-            if v.get('status') not in ['processing','download_pending']:continue
-            try:
-                task=poll_voice(CONFIG,v['task_id'])
-                if task.get('status')=='error':update(row['id'],lambda x:x['voice'].update(status='error',error='The audio service could not complete this recording. Your reading is available.'))
-                elif task.get('status')=='done':
-                    name=hashlib.sha256(row['id'].encode()).hexdigest()+'.mp3'
-                    update(row['id'],lambda x:x['voice'].update(status='download_pending'))
-                    download_audio(task['metadata']['audio_url'],DATA/'audio'/name)
-                    def ready(x):
-                        x.update(audio_file=name);x['voice'].update(status='ready',progress=100,credit_cost=task.get('credit_cost'))
-                    update(row['id'],ready);mail(row['id'],'audio','Your personal audio is ready','Your audio and transcript are ready in your personal space.')
-                else:update(row['id'],lambda x:x['voice'].update(progress=task.get('progress',0)))
-            except Exception:
-                # Recheck the existing task later; never create a second billed task.
-                pass
+            process_voice(row['id'],'intro');process_voice(row['id'],'voice')
+        dispatch_mail_once()
+        if time.time()>maintenance:expire_sessions();maintenance=time.time()+3600
+
 
 class Handler(BaseHTTPRequestHandler):
     server_version='RabbiDavid'
     def log_message(self,*args):pass
+    def headers_common(self,mime,cache='no-store'):
+        self.send_header('Content-Type',mime);self.send_header('Cache-Control',cache)
+        self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer')
+        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+        origin=self.headers.get('Origin')
+        if origin in origins(CONFIG,PORT):
+            self.send_header('Access-Control-Allow-Origin',origin)
+            self.send_header('Access-Control-Allow-Credentials','true');self.send_header('Vary','Origin')
+        if getattr(self,'new_cookie',None):
+            secure='; Secure' if public_origin().startswith('https://') else ''
+            self.send_header('Set-Cookie','rd_session='+self.new_cookie+'; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax'+secure)
+        if getattr(self,'clear_cookie',False):self.send_header('Set-Cookie','rd_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax')
     def send(self,status=200,obj=None,body=None,mime='application/json',headers=None):
         if body is None:body=json.dumps(obj,ensure_ascii=False).encode()
-        self.send_response(status);self.send_header('Content-Type',mime);self.send_header('Content-Length',str(len(body)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer')
-        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
-        if getattr(self,'new_cookie',None):
-            cookie_secure = '; Secure; SameSite=None' if (os.environ.get('RENDER') or os.environ.get('PRODUCTION') or self.headers.get('X-Forwarded-Proto')=='https') else '; SameSite=Lax'
-            self.send_header('Set-Cookie','rd_session='+self.new_cookie+'; HttpOnly; Path=/; Max-Age=2592000'+cookie_secure)
-        if self.headers.get('Origin'):
-            self.send_header('Access-Control-Allow-Origin', self.headers.get('Origin'))
-            self.send_header('Access-Control-Allow-Credentials', 'true')
+        self.send_response(status);self.headers_common(mime)
+        self.send_header('Content-Length',str(len(body)))
         for k,v in (headers or {}).items():self.send_header(k,v)
-        self.end_headers();self.wfile.write(body)
+        self.end_headers()
+        try:self.wfile.write(body)
+        except (BrokenPipeError,ConnectionResetError,ConnectionAbortedError):pass
+    def send_file(self,file,mime=None,private=False):
+        size=file.stat().st_size;etag='"'+str(file.stat().st_mtime_ns)+'-'+str(size)+'"'
+        cache='no-store' if private else ('no-cache' if file.suffix=='.html' else 'public, max-age=3600')
+        if not private and self.headers.get('If-None-Match')==etag:
+            self.send_response(304);self.headers_common(mime or mimetypes.guess_type(str(file))[0] or 'application/octet-stream',cache);self.send_header('ETag',etag);self.end_headers();return
+        start,end,status=0,size-1,200
+        requested=self.headers.get('Range')
+        if requested:
+            match=re.fullmatch(r'bytes=(\d*)-(\d*)',requested)
+            if not match or not any(match.groups()):return self.send(416,body=b'',headers={'Content-Range':f'bytes */{size}'})
+            first,last=match.groups()
+            if first:start=int(first);end=min(int(last),size-1) if last else size-1
+            else:start=max(0,size-int(last))
+            if start>end or start>=size:return self.send(416,body=b'',headers={'Content-Range':f'bytes */{size}'})
+            status=206
+        self.send_response(status);self.headers_common(mime or mimetypes.guess_type(str(file))[0] or 'application/octet-stream',cache)
+        self.send_header('Content-Length',str(max(0,end-start+1)));self.send_header('Accept-Ranges','bytes')
+        if not private:self.send_header('ETag',etag)
+        if status==206:self.send_header('Content-Range',f'bytes {start}-{end}/{size}')
+        self.end_headers()
+        try:
+            with file.open('rb') as stream:
+                stream.seek(start);remaining=end-start+1
+                while remaining>0:
+                    chunk=stream.read(min(65536,remaining))
+                    if not chunk:break
+                    self.wfile.write(chunk);remaining-=len(chunk)
+        except (BrokenPipeError,ConnectionResetError,ConnectionAbortedError):pass
     def session(self):
         cookie=SimpleCookie();cookie.load(self.headers.get('Cookie',''))
         sid=cookie['rd_session'].value if 'rd_session' in cookie else ''
         if not re.fullmatch(r'[A-Za-z0-9_-]{40,50}',sid) or not get(sid):sid=new_session();self.new_cookie=sid
         return sid
     def allowed_host(self):
-        if os.environ.get('ALLOWED_HOSTS')=='*' or os.environ.get('RENDER') or os.environ.get('PRODUCTION'):return True
-        h=self.headers.get('Host','').split(':')[0]
-        return h in {'127.0.0.1','localhost','rabbidavid.org','www.rabbidavid.org'} or h.endswith('.onrender.com') or self.headers.get('Host') in [f'127.0.0.1:{PORT}',f'localhost:{PORT}']
+        allowed={urllib.parse.urlsplit(value).netloc for value in origins(CONFIG,PORT)}
+        backend=os.environ.get('RENDER_EXTERNAL_HOSTNAME','')
+        if backend:allowed.add(backend)
+        return self.headers.get('Host','') in allowed
+    def allowed_origin(self):
+        return not self.headers.get('Origin') or self.headers.get('Origin') in origins(CONFIG,PORT)
     def do_OPTIONS(self):
-        self.send_response(200)
-        origin=self.headers.get('Origin','*')
-        self.send_header('Access-Control-Allow-Origin', origin)
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With, Cookie')
-        self.send_header('Access-Control-Allow-Credentials', 'true')
-        self.end_headers()
+        if not self.allowed_host() or not self.allowed_origin():return self.send(403,{'error':'Request not allowed'})
+        return self.send(204,body=b'',headers={'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-Requested-With'})
     def do_GET(self):
-        if not self.allowed_host():return self.send(403,{'error':'This preview is available only on authorized hosts.'})
-        u=urllib.parse.urlparse(self.path);path=u.path;sid=self.session()
+        if not self.allowed_host() or not self.allowed_origin():return self.send(403,{'error':'This preview is available only on authorized hosts.'})
+        u=urllib.parse.urlparse(self.path);path=u.path;sid=self.session() if path.startswith('/api/') or path=='/access' else None
         try:
             if path=='/api/state':return self.send(obj=safe_state(get(sid)))
             if path=='/api/catalog':return self.send(obj=CATALOG)
             if path=='/api/practices':return self.send(obj=PRACTICES)
-            if path=='/api/config':return self.send(obj=dict(mode='preview',payments=False,email='local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
+            if path=='/api/config':return self.send(obj=dict(mode='preview',payments=False,email='smtp' if mail_configured() else 'local',support='email' if mail_configured() and CONFIG.get('support_email') else 'local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
+            if path=='/api/export':
+                return self.send(obj=safe_state(get(sid)),headers={'Content-Disposition':'attachment; filename="my-reading-data.json"'})
             if path=='/api/inbox':
-                with connection() as con:rows=con.execute('SELECT id,recipient,subject,body,due,kind FROM mail WHERE sid=? ORDER BY created DESC',(sid,)).fetchall()
+                with connection() as con:rows=con.execute('SELECT id,recipient,subject,body,due,kind,delivery_status FROM mail WHERE sid=? ORDER BY created DESC',(sid,)).fetchall()
                 items=[dict(r) for r in rows]
                 for item in items:
                     if item['kind']=='plan' and (DATA/'outbox'/(item['id']+'.eml')).is_file():item['attachment_preview']='/api/plan-email?id='+item['id']
@@ -387,11 +512,11 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/audio':
                 d=get(sid)
                 if not d.get('audio_file') or d['voice']['status']!='ready':return self.send(404,{'error':'Audio is not ready'})
-                return self.send(body=(DATA/'audio'/d['audio_file']).read_bytes(),mime='audio/mpeg')
+                return self.send_file(DATA/'audio'/d['audio_file'],mime='audio/mpeg',private=True)
             if path=='/api/welcome':
                 d=get(sid)
                 if not d.get('intro_file') or d.get('intro',{}).get('status')!='ready':return self.send(404,{'error':'Welcome is not ready'})
-                return self.send(body=(DATA/'audio'/d['intro_file']).read_bytes(),mime='audio/mpeg')
+                return self.send_file(DATA/'audio'/d['intro_file'],mime='audio/mpeg',private=True)
             if path=='/api/transcript':
                 d=get(sid)
                 if d['tier']!='personal':return self.send(403,{'error':'Personal plan required'})
@@ -408,22 +533,16 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/':path='/index.html'
             f=(ROOT/'public'/urllib.parse.unquote(path.lstrip('/'))).resolve()
             if not f.is_relative_to((ROOT/'public').resolve()) or not f.is_file():return self.send(404,{'error':'Not found'})
-            return self.send(body=f.read_bytes(),mime=mimetypes.guess_type(str(f))[0] or 'application/octet-stream')
+            return self.send_file(f)
         except Exception:return self.send(500,{'error':'Something could not be loaded. Please try again.'})
     def do_POST(self):
         if not self.allowed_host() or self.headers.get('X-Requested-With')!='RabbiDavid':return self.send(403,{'error':'Request not allowed'})
-        origin=self.headers.get('Origin')
-        if origin:
-            parsed_origin=urllib.parse.urlparse(origin).hostname or ''
-            origin_ok=(parsed_origin in {'127.0.0.1','localhost','rabbidavid.org','www.rabbidavid.org'} or
-                       parsed_origin.endswith('.onrender.com') or
-                       origin in [f'http://127.0.0.1:{PORT}',f'http://localhost:{PORT}'] or
-                       os.environ.get('RENDER') or os.environ.get('PRODUCTION'))
-            if not origin_ok:return self.send(403,{'error':'Request not allowed'})
+        if not self.allowed_origin():return self.send(403,{'error':'Request not allowed'})
         try:
             length=int(self.headers.get('Content-Length','0'))
             if length<0 or length>20000:return self.send(413,{'error':'Please shorten your message'})
-            body=json.loads(self.rfile.read(length));sid=self.session();d=get(sid);path=self.path
+            reserve(DB,'requests:'+hashlib.sha256(self.client_address[0].encode()).hexdigest(),int(CONFIG.get('max_requests_per_minute',120)),60)
+            body=json.loads(self.rfile.read(length));sid=self.session();d=get(sid);path=urllib.parse.urlsplit(self.path).path
             if not isinstance(body,dict):raise ValueError('Please check the request')
             if path in ['/api/save','/api/generate','/api/followup','/api/demo-tier','/api/voice','/api/intro'] and not d.get('started'):return self.send(403,{'error':'Enter your first name and email before beginning the test.'})
             if path=='/api/enroll':
@@ -450,7 +569,11 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/followup':
                 valid_answers(d['answers'],True)
                 if d['status']!='draft' or body.get('consent') is not True:raise ValueError('Please confirm use of your answers for this optional question')
-                if d.get('followup'):return self.send(obj=safe_state(d))
+                with LOCK:
+                    d=get(sid)
+                    if d.get('followup'):return self.send(obj=safe_state(d))
+                    if d.get('followup_pending'):return self.send(409,{'error':'Your optional question is already being prepared. Please wait.'})
+                    update(sid,lambda x:x.update(followup_pending=True))
                 try:
                     if not AI_ENABLED:raise ProviderError('Offline')
                     title=generate_followup(CONFIG,d['answers']);source='ai'
@@ -458,7 +581,8 @@ class Handler(BaseHTTPRequestHandler):
                     title='What would one ordinary day look like if it better reflected the priority you chose?';source='guided'
                 q=dict(id='personal_detail',title=title,hint='An optional follow-up based on your answers. Share only what feels comfortable.',type='text',optional=True,maxLength=600)
                 def followup_ready(x):
-                    if x['answers']==d['answers']:x.update(followup=q,followup_source=source,step=len(route(x['answers'])))
+                    x.pop('followup_pending',None)
+                    if x['answers']==d['answers'] and x['status']=='draft':x.update(followup=q,followup_source=source,step=len(route(x['answers'])))
                 d=update(sid,followup_ready)
             elif path=='/api/generate':
                 if d['status']=='generating':return self.send(obj=safe_state(d))
@@ -481,7 +605,7 @@ class Handler(BaseHTTPRequestHandler):
                             x.update(plan=None,plan_status=None,completed_days=[],voice={'status':'not_requested'},intro={'status':'not_requested'})
                             x.pop('audio_file',None);x.pop('intro_file',None)
                     d=update(sid,begin)
-                    event(sid,'test_complete');POOL.submit(generate_job,sid,d['revision'],body.get('guided') is True)
+                    event(sid,'test_complete');schedule(generate_job,sid,d['revision'],body.get('guided') is True)
             elif path=='/api/contact':
                 _,email=valid_identity(d['answers'].get('name'),body.get('email',''))
                 marketing=body.get('marketing') is True
@@ -513,7 +637,7 @@ class Handler(BaseHTTPRequestHandler):
                     if tier==current['tier']:return self.send(obj=safe_state(current))
                     if current['tier']=='personal':raise ValueError('Your personal plan already includes the full reading')
                     d=update(sid,upgrade);sync_delivery(sid);event(sid,'preview_'+tier)
-                    if tier=='personal' and d.get('plan_status')=='preparing':POOL.submit(plan_job,sid,d['revision'])
+                    if tier=='personal' and d.get('plan_status')=='preparing':schedule(plan_job,sid,d['revision'])
             elif path=='/api/plan-retry':
                 if body.get('consent') is not True:raise ValueError('Please confirm preparation of your detailed plan.')
                 if not AI_ENABLED:raise ValueError('Personal plan generation is not connected.')
@@ -524,20 +648,20 @@ class Handler(BaseHTTPRequestHandler):
                     if current.get('completed_days'):raise ValueError('Keep the plan you have started, or begin a new test for a new plan.')
                     valid_answers(current['answers'],True,followup=current.get('followup'))
                     d=update(sid,lambda x:x.update(plan_status='preparing',plan_delivery_error=None))
-                    POOL.submit(plan_job,sid,d['revision'])
+                    schedule(plan_job,sid,d['revision'])
             elif path=='/api/voice':
                 if not VOICE_ENABLED:raise ValueError('Voice generation is disabled in this preview. The recording integration is prepared.')
                 if d['tier']!='personal' or d['status']!='ready' or not d.get('plan'):raise ValueError('Please wait for your personal plan first')
                 with LOCK:
                     current=get(sid)
                     if not current['voice'].get('task_id') and current['voice']['status']=='not_requested':
-                        update(sid,lambda x:x['voice'].update(status='queued'));POOL.submit(start_voice,sid,'personal')
+                        update(sid,lambda x:x['voice'].update(status='queued'));schedule(start_voice,sid,'personal')
                 d=get(sid)
             elif path=='/api/intro':
                 if not VOICE_ENABLED or d['tier']!='personal':raise ValueError('Spoken welcome is not available')
                 with LOCK:
                     if get(sid).get('intro',{}).get('status','not_requested')=='not_requested':
-                        update(sid,lambda x:x.update(intro={'status':'queued'}));POOL.submit(intro_job,sid)
+                        update(sid,lambda x:x.update(intro={'status':'queued'}));schedule(intro_job,sid)
                 d=get(sid)
             elif path=='/api/days':
                 if d['tier']!='personal':raise ValueError('Open the personal plan first')
@@ -548,6 +672,25 @@ class Handler(BaseHTTPRequestHandler):
                 owned=body.get('owned',[])
                 if not isinstance(owned,list) or any(v not in {b['id'] for b in CATALOG} for v in owned):raise ValueError('Invalid book selection')
                 d=update(sid,lambda x:x.update(owned=list(set(owned))))
+            elif path=='/api/recovery-key':
+                if not d.get('started'):raise ValueError('Start your reading first.')
+                token=secrets.token_urlsafe(32)
+                with connection() as con:
+                    con.execute('DELETE FROM recovery_keys WHERE sid=?',(sid,))
+                    con.execute('INSERT INTO recovery_keys VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),sid,time.time()+90*86400))
+                return self.send(obj={'key':token,'message':'Keep this private recovery key. It replaces any earlier key and expires in 90 days.'})
+            elif path=='/api/recover-key':
+                token=body.get('key','')
+                if not isinstance(token,str) or len(token)>100:raise ValueError('Invalid recovery key.')
+                with connection() as con:r=con.execute('SELECT sid FROM recovery_keys WHERE token=? AND expires>?',(hashlib.sha256(token.strip().encode()).hexdigest(),time.time())).fetchone()
+                if not r or not get(r['sid']):raise ValueError('This recovery key is invalid or expired.')
+                self.new_cookie=r['sid'];return self.send(obj={'message':'Your saved reading is open.','redirect':'result.html'})
+            elif path=='/api/delete':
+                if body.get('confirmation')!='DELETE':raise ValueError('Confirm deletion first.')
+                purge_session(sid);self.clear_cookie=True
+                return self.send(obj={'message':'This reading and its saved files have been deleted.'})
+            elif path=='/api/logout':
+                self.clear_cookie=True;return self.send(obj={'message':'You have signed out on this browser.'})
             elif path=='/api/recover':
                 email=body.get('email','')
                 if not isinstance(email,str):raise ValueError('Please enter a valid email address.')
@@ -555,19 +698,25 @@ class Handler(BaseHTTPRequestHandler):
                 with connection() as con:rows=con.execute('SELECT id,data FROM sessions ORDER BY updated DESC').fetchall()
                 matches=[r for r in rows if json.loads(r['data']).get('email')==email and email]
                 if matches:recovery_mail(matches[0]['id'])
-                return self.send(obj={'message':'If a reading is associated with this email, an access link has been prepared in its local test inbox. No email has been sent externally.'})
+                return self.send(obj={'message':('If a reading is associated with this email, a secure access message has been queued for delivery.' if mail_configured() else 'Email recovery is not connected yet. Use your private recovery key below, or contact support. No external email was sent.')})
             elif path=='/api/support':
                 message=body.get('message','')
                 if not isinstance(message,str):raise ValueError('Please enter your message.')
                 message=message.strip()
                 if not 10<=len(message)<=2000:raise ValueError('Please write between 10 and 2,000 characters')
-                mid=secrets.token_hex(16)
-                with connection() as con:con.execute('INSERT INTO mail VALUES(?,?,?,?,?,?,?,?)',(mid,sid,'Local support inbox','Preview support request',message,time.time(),'support',time.time()))
-                return self.send(obj={'message':'Your message is saved in the local support inbox. External support is not connected yet.'})
+                reply=body.get('email') or d.get('email','')
+                if reply:_,reply=valid_identity(body.get('name') or d.get('answers',{}).get('name') or 'Reader',reply)
+                category=body.get('category','general')
+                if category not in ['general','access','technical','refund','privacy']:raise ValueError('Choose a contact topic.')
+                mid=secrets.token_hex(16);recipient=CONFIG.get('support_email') or 'Local support inbox'
+                message=f'Reply address: {reply}\nTopic: {category}\n\n'+message
+                with connection() as con:con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created) VALUES(?,?,?,?,?,?,?,?)',(mid,sid,recipient,'Support request '+mid[:8],message,time.time(),'support',time.time()))
+                return self.send(obj={'reference':mid[:8],'message':('Your request is queued for support. Reference: ' if mail_configured() and CONFIG.get('support_email') else 'Your request is saved in this preview. External support delivery is not connected. Reference: ')+mid[:8]})
             elif path=='/api/new':
                 self.new_cookie=new_session();return self.send(obj=safe_state(get(self.new_cookie)))
             else:return self.send(404,{'error':'Not found'})
             return self.send(obj=safe_state(d))
+        except CapacityError as e:return self.send(429,{'error':str(e)},headers={'Retry-After':'60'})
         except ValueError as e:return self.send(400,{'error':str(e)})
         except Exception:return self.send(500,{'error':'Something could not be saved. Your last saved answers are safe.'})
 
@@ -576,10 +725,10 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('--config',default=os.environ.get('CONFIG_PATH'))
     p.add_argument('--data',default=os.environ.get('DATA_DIR','./antigravity-data'))
-    p.add_argument('--host',default=os.environ.get('HOST','0.0.0.0'))
+    p.add_argument('--host',default=os.environ.get('HOST','127.0.0.1'))
     p.add_argument('--port',type=int,default=int(os.environ.get('PORT',8100)))
     p.add_argument('--offline',action='store_true')
-    p.add_argument('--enable-voice',action='store_true',default=os.environ.get('ENABLE_VOICE','1')=='1')
+    p.add_argument('--enable-voice',action='store_true',default=os.environ.get('ENABLE_VOICE','0')=='1')
     args=p.parse_args()
     config={}
     if args.config and Path(args.config).is_file():
@@ -596,6 +745,11 @@ def main():
         config['ai33_voice_id']=os.environ['AI33_VOICE_ID']
     AI_ENABLED=not args.offline
     VOICE_ENABLED=args.enable_voice
+    for field in ['smtp_host','smtp_port','smtp_username','smtp_password','mail_from','support_email']:
+        if os.environ.get(field.upper()):config[field]=os.environ[field.upper()]
+    if os.environ.get('PUBLIC_ORIGIN'):config['public_origin']=os.environ['PUBLIC_ORIGIN'].rstrip('/')
+    if os.environ.get('FREE_TESTING'):config['free_testing']=os.environ['FREE_TESTING'].lower()=='true'
+    if os.environ.get('PRODUCTION')=='1' and not config.get('public_origin'):p.error('PUBLIC_ORIGIN is required in production')
     init(config,args.data,args.port)
     threading.Thread(target=poll_voices,daemon=True).start()
     print(f'Server listening on http://{args.host}:{PORT} | Voice: {VOICE_ENABLED}',flush=True)

@@ -8,6 +8,8 @@ services:
     startCommand: python server.py --host 0.0.0.0
     autoDeploy: true
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
       - key: PRODUCTION
         value: "1"
       - key: PUBLIC_ORIGIN

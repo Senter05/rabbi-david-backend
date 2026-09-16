@@ -94,8 +94,11 @@ class JourneyTests(unittest.TestCase):
         _,d=self.req('/api/owned',dict(owned=['legacy']));self.assertIsNone(d['recommendation'])
     def test_recovery_one_use(self):
         self.ready();self.req('/api/contact',dict(email='recover@example.com',marketing=False));self.req('/api/recover',dict(email='recover@example.com'))
-        _,mails=self.req('/api/inbox');message=next(m for m in mails if m['kind']=='access');link=message['body'].splitlines()[0].split('Open ')[1]
-        token=link.split('token=')[1]
+        _,mails=self.req('/api/inbox');message=next(m for m in mails if m['kind']=='access')
+        link=next(line.strip() for line in message['body'].splitlines() if line.strip().startswith(server.public_origin()+'/access?token='))
+        parsed=urllib.parse.urlsplit(link)
+        self.assertEqual(parsed.path,'/access')
+        token=urllib.parse.parse_qs(parsed.query)['token'][0]
         other=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         with other.open(link) as response:self.assertEqual(response.status,200)
         _,d=self.req('/api/state',client=other);self.assertEqual(d['email'],'recover@example.com')

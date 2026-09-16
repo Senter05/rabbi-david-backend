@@ -205,3 +205,5 @@ details summary {
   .account-reading { padding: 18px; }
   .account-reading-actions > * { width: 100%; box-sizing: border-box; }
 }
+
+label.password-visibility{display:flex;align-items:center;gap:10px;min-height:44px;margin:8px 0 16px;font-size:16px;line-height:1.5;cursor:pointer}label.password-visibility input[type="checkbox"]{width:20px;height:20px;min-height:20px;margin:0;padding:0;flex:0 0 20px;accent-color:#d4af37}

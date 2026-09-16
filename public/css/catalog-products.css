@@ -192,7 +192,7 @@ body[data-product-id] .laws-grid {grid-template-columns:repeat(3,minmax(0,1fr))}
  .related-reading{padding-bottom:46px}
  .related-book{gap:12px;padding:16px}
  .related-book>img{width:52px;height:78px}
- .related-book>span:last-child{flex:0 0 14px}
+ .related-book>span:last-child:not(:nth-child(2)){flex:0 0 14px}
  .verified-reader-grid{grid-template-columns:minmax(0,1fr)}
 }
 @media(hover:none){
@@ -203,3 +203,5 @@ body[data-product-id] .laws-grid {grid-template-columns:repeat(3,minmax(0,1fr))}
  .library-card,.library-card .btn-buy,body[data-product-id] .btn-buy,
  body[data-product-id] .product-image-3d{animation:none!important;transition:none!important}
 }
+
+.related-book>span:nth-child(2){flex:1 1 0;min-width:0}.related-book strong{word-break:normal;overflow-wrap:break-word}

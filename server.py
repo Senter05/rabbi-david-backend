@@ -16,6 +16,7 @@ from email.message import EmailMessage
 from email import policy
 from email.utils import parseaddr
 import mail_delivery
+from email_templates import add_html as add_email_html
 from supabase_client import SupabaseClient
 
 ROOT=Path(__file__).resolve().parent
@@ -216,23 +217,23 @@ def recovery_mail(sid):
     # Queue only newly requested mail when SMTP is configured; existing local previews stay local.
     mid=secrets.token_hex(16)
     with connection() as con:
-        con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created,delivery_status) VALUES(?,?,?,?,?,?,?,?,?)',(mid,sid,d['email'],'Your secure access link',f'Open {public_origin()}/access?token={token}\nThis link expires in 15 minutes and works once.',time.time(),'access',time.time(),'pending' if mail_configured() else 'local'))
+        con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created,delivery_status) VALUES(?,?,?,?,?,?,?,?,?)',(mid,sid,d['email'],'Rabbi David | Your sign-in link',f'Shalom,\n\nWelcome back. Use the button below to return to your reading.\n\n{public_origin()}/access?token={token}\n\nThis private link works once and expires in 15 minutes. If you did not request it, ignore this email.\n\nWith warmth,\nThe Rabbi David Team',time.time(),'access',time.time(),'pending' if mail_configured() else 'local'))
 
 def sync_delivery(sid):
     d=get(sid)
     if not d or d.get('status')!='ready':return
-    view,preview=reading_view(d['reading'],d['tier'])
-    parts=['A personal reading for '+d['answers']['name'],view['title'],view['summary'],view['insight']]
-    for item in view.get('evidence',[]):parts.extend(['How your answers connect',item['interpretation']])
-    step=view.get('first_step')
-    if step:parts.extend(['Your first practical step',step['action'],step['why'],step['reflection']])
-    for section in view['sections']:parts.extend([section['title'],section['text']])
-    if d['tier']=='free':parts.append('This is your free opening reflection, approximately 40% of your reading. Your saved personal space explains the complete reading and optional plan.')
-    parts.append('Return with your private recovery key or request an email access link from the website. No purchase was made in this preview.'+('' if mail_configured() else ' Delivery status is shown in your saved reading.'))
-    mail(sid,'reading_'+d['tier'],'Your Rabbi David reading is ready','\n\n'.join(p for p in parts if p))
+    name=d['answers'].get('name','')
+    access_note=('Your opening reflection is ready. It connects your answers with a Jewish teaching and a practical first step.'
+                 if d['tier']=='free' else 'Your complete reading is ready. Explore the teaching, consider what fits your situation, and choose one practical step.')
+    body=f"Shalom {name},\n\n{access_note}\n\n{public_origin()}/account.html\n\nSign in with the email address you used for your reading.\n\nWith warmth,\nThe Rabbi David Team"
+    subject='Rabbi David | Your opening reflection is ready' if d['tier']=='free' else 'Rabbi David | Your complete reading is ready'
+    mail(sid,'reading_'+d['tier'],subject,body)
     if d['marketing']:
-        for days,subject,body in [(1,'How did your first reflection feel?','Was the reading clear? Reply with what felt useful or what did not fit. You can return to your personal space whenever you wish.'),(5,'What would you like to explore next?','What have you noticed since your reading? Your personal space includes an optional book suggestion related to your chosen priority.')]:
-            mail(sid,'followup_'+str(days),subject,body+'\nYou can turn off follow-ups in your personal space.',time.time()+days*86400)
+        for days,subject,body in [
+            (1,'Rabbi David | One small step today','A useful teaching becomes more meaningful when you try it. Revisit your reading and choose one small action that fits today.'),
+            (5,'Rabbi David | Take a moment to reflect','What felt useful? What would you adjust? Return to your reading with what you have learned from trying it.')]:
+            mail(sid,'followup_'+str(days),subject,f'Shalom {name},\n\n{body}\n\n{public_origin()}/account.html\n\nYou can turn off these optional reminders in your reading under Email preferences.\n\nWith warmth,\nThe Rabbi David Team',time.time()+days*86400)
+
 
 def prepare_plan_delivery(sid):
     """Prepare the actual attachment locally; no external delivery is claimed."""
@@ -242,13 +243,14 @@ def prepare_plan_delivery(sid):
     mid=hashlib.sha256(f'{sid}:{d["revision"]}:plan'.encode()).hexdigest()
     message=EmailMessage()
     message['To']=d['email']
-    message['Subject']='Your personal fourteen-day plan'
-    message.set_content(f"{d['answers']['name']}, your personal plan is attached as a PDF. Read the introduction, then begin with Day 1. You can also download it from your saved reading.\n\nKeep this plan for your personal reference.")
+    message['Subject']='Rabbi David | Your 14-day plan PDF is ready'
+    message.set_content(f"Shalom {d['answers']['name']},\n\nYour personal 14-day plan is attached as a PDF. Start with Day 1, at a pace that feels manageable.\n\nTo return to your reading and personal audio, sign in here:\n\n{public_origin()}/account.html\n\nWith warmth,\nThe Rabbi David Team")
+    add_email_html(message,'plan',public_origin())
     message.add_attachment(pdf,maintype='application',subtype='pdf',filename='your-personal-14-day-plan.pdf')
     directory=DATA/'outbox';directory.mkdir(exist_ok=True)
     target=directory/(mid+'.eml');temporary=directory/(mid+'.tmp')
     temporary.write_bytes(message.as_bytes());temporary.replace(target)
-    mail(sid,'plan',message['Subject'],'Your personal eighteen-page plan is attached to the prepared email. Download the PDF from your saved reading. Delivery status is shown in your saved reading.')
+    mail(sid,'plan',message['Subject'],message.get_body(preferencelist=('plain',)).get_content())
 
 EBOOK_DELIVERY = {
     'rituals': {
@@ -292,19 +294,15 @@ def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, curre
     message['To'] = email
     sender = CONFIG.get('mail_from') or 'Rabbi David <david@rabbidavid.org>'
     message['From'] = sender
-    message['Subject'] = f"Your Ebook: {info['title']} — Rabbi David"
+    message['Subject'] = f"Rabbi David | Your book: {info['title']}"
     body = (
-        f"Shalom {name},\n\n"
-        f"Thank you for your order with Rabbi David.\n\n"
-        f"Your copy of {info['title']} is attached to this email as a digital PDF.\n\n"
-        f"You can also access and download your digital materials anytime at:\n"
-        f"{info['url']}\n\n"
-        f"If you have any questions or need assistance, reply to this email or contact us at sentercompanyls@gmail.com.\n\n"
-        f"With warm blessings,\n"
-        f"Rabbi David\n"
-        f"Senter Company LLC"
+        f"Shalom {name},\n\nThank you for your order. Your digital book, {info['title']}, is ready.\n\n"
+        f"Download your materials here:\n\n{info['url']}\n\n"
+        "Any attached PDFs are also yours to keep. Need help? Contact sentercompanyls@gmail.com.\n\n"
+        "With warmth,\nThe Rabbi David Team\nSenter Company LLC"
     )
     message.set_content(body)
+    add_email_html(message,'ebook','https://rabbidavid.org')
     ebooks_dir = ROOT / 'ebooks'
     if not ebooks_dir.is_dir():
         ebooks_dir = ROOT / 'public' / 'pdf'
@@ -604,6 +602,7 @@ def dispatch_mail_once():
         message=BytesParser(policy=policy.default).parsebytes(attachment.read_bytes()) if row['kind']=='plan' else EmailMessage()
         if not message.get('To'):
             message['To']=row['recipient'];message['Subject']=row['subject'];message.set_content(row['body'])
+        add_email_html(message,row['kind'],public_origin())
         # Use the current recipient even when a saved MIME attachment is older.
         if message.get('To'):message.replace_header('To',row['recipient'])
         message['From']=CONFIG['mail_from'];message['Message-ID']='<'+row['id']+'@'+parseaddr(CONFIG['mail_from'])[1].split('@')[-1]+'>'
@@ -841,7 +840,7 @@ class Handler(BaseHTTPRequestHandler):
                             try:SUPABASE.sign_up(email,password,name)
                             except Exception as ex:print(f"[SUPABASE SIGNUP ERROR] {ex}",flush=True)
                         if mail_configured():
-                            send_auth_mail(email,'Welcome to Rabbi David',f"Hello {name},\n\nYour account has been created. Visit {public_origin()}/account.html anytime to review your saved reflections.\n\nRabbi David",'welcome')
+                            send_auth_mail(email,'Rabbi David | Welcome to your account',f"Shalom {name},\n\nYour account is ready. It gives you one place to return to your readings.\n\n{public_origin()}/account.html\n\nUse your email address and password to sign in.\n\nWith warmth,\nThe Rabbi David Team",'welcome')
                 else:
                     u=get_user_by_email(email)
                     if u:user_id=u['id']
@@ -1050,7 +1049,7 @@ class Handler(BaseHTTPRequestHandler):
                     x['answers']['name']=name
                 update(sid,setup_session)
                 if mail_configured():
-                    send_auth_mail(email,'Welcome to Rabbi David',f"Hello {name},\n\nYour account has been created. Visit {public_origin()}/account.html anytime to review your saved reflections.\n\nRabbi David",'welcome')
+                    send_auth_mail(email,'Rabbi David | Welcome to your account',f"Shalom {name},\n\nYour account is ready. It gives you one place to return to your readings.\n\n{public_origin()}/account.html\n\nUse your email address and password to sign in.\n\nWith warmth,\nThe Rabbi David Team",'welcome')
                 return self.send(obj={'user':safe_user(u),'readings':get_user_readings_list(u['id']),'message':'Account created successfully.'})
             elif path=='/api/auth/login':
                 email=body.get('email','')
@@ -1094,10 +1093,9 @@ class Handler(BaseHTTPRequestHandler):
                         con.execute('DELETE FROM password_resets WHERE user_id=?',(u['id'],))
                         con.execute('INSERT INTO password_resets(token,user_id,expires) VALUES(?,?,?)',(token,u['id'],time.time()+3600))
                     reset_url=f"{public_origin()}/account.html?reset_token={token}"
-                    send_auth_mail(email,'Reset your Rabbi David password',f"Hello,\n\nWe received a request to reset your password. Use the link below to choose a new password:\n\n{reset_url}\n\nThis link expires in 1 hour. If you did not request this, please ignore this message.\n\nRabbi David",'password_reset')
-                    if SUPABASE.is_configured():
-                        try:SUPABASE.send_password_recovery(email,redirect_to=f"{public_origin()}/account.html")
-                        except Exception as ex:print(f"[SUPABASE RECOVER ERROR] {ex}",flush=True)
+                    send_auth_mail(email,'Rabbi David | Reset your password',f"Shalom,\n\nYou requested a new password. Choose one using the button below:\n\n{reset_url}\n\nThis link expires in 1 hour. If you did not request it, ignore this email; your password will stay the same.\n\nWith warmth,\nThe Rabbi David Team",'password_reset')
+                    # Login and reset use the local account. A second Supabase recovery
+                    # would change a different credential and confuse the recipient.
                 return self.send(obj={'message':'If this email belongs to an account, recovery instructions have been sent.'})
             elif path=='/api/auth/reset-confirm':
                 token=body.get('token','')

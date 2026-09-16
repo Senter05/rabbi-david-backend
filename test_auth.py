@@ -118,6 +118,19 @@ class AuthTests(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertEqual(login_res['user']['email'], email)
 
+    def test_reset_sends_one_message_when_supabase_is_configured(self):
+        email='single_reset@example.com'
+        self.req('/api/auth/register', {'name':'Reset Test','email':email,'password':'InitialPassword123'})
+        with patch.object(server.SUPABASE,'is_configured',return_value=True), patch.object(server.SUPABASE,'send_password_recovery') as duplicate:
+            code,_=self.req('/api/auth/reset-request',{'email':email})
+        self.assertEqual(code,200)
+        duplicate.assert_not_called()
+        with server.connection() as con:
+            rows=con.execute("SELECT body FROM mail WHERE recipient=? AND kind='password_reset'",(email,)).fetchall()
+        self.assertEqual(len(rows),1)
+        self.assertIn('1 hour',rows[0]['body'])
+        self.assertIn('/account.html?reset_token=',rows[0]['body'])
+
     def test_email_verification_flow(self):
         email = 'verify_me@example.com'
         self.req('/api/auth/register', {'name': 'Verify Test', 'email': email, 'password': 'VerifyPass123'})

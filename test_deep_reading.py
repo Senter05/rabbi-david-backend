@@ -17,13 +17,24 @@ def valid_reading():
 def words(number):
     return ' '.join(('Thoughtful reflection connects practical choices with gratitude care responsibility purpose and the life you described today'.split()*number)[:number])
 
+def section_text(index=0):
+    # Different paragraphs exercise readability and duplicate-content checks.
+    paragraphs=[
+        'A useful distinction is between noticing what is already sufficient and deciding what still needs attention. Pirkei Avot describes appreciation as an ethical form of richness. This does not mean ignoring difficulty or treating a modest budget as a personal failing.',
+        'For example, imagine sitting down with a notebook before the day begins. Instead of listing everything you lack, describe one existing support and one unresolved concern. The contrast can make the concern more specific without pretending that gratitude will remove it.',
+        'The limit matters: appreciation cannot replace practical help when a problem exceeds your resources. For a five minute writing practice, choose a concern small enough to describe honestly, then identify one question you could clarify with information already available to you.',
+        f'Perspective {index+1} connects reflection with a manageable choice rather than a promised outcome. Stop after the chosen time and leave the note somewhere easy to find. Which part of this concern can you clarify today without spending money or judging yourself?'
+    ]
+    return '\n\n'.join(paragraphs)
+
 def deep_reading():
-    d=valid_reading();d['summary']=words(130);d['insight']=words(90)
+    d=valid_reading();d['summary']=words(55);d['insight']=words(30)
     for i,s in enumerate(d['sections']):
-        s.update(text=words(100)+'\n\n'+words(100)+'\n\n'+words(100)+'\n\n'+words(100),source_id=SOURCES[i]['id'])
-    for item in d['evidence']:item['interpretation']=words(50)
-    d['first_step']=dict(action=words(75),why=words(40),reflection=words(12)+'?')
+        s.update(text=section_text(i),source_id=SOURCES[i]['id'])
+    for item in d['evidence']:item['interpretation']=words(25)
+    d['first_step']=dict(action=words(35),why=words(18),reflection=words(12)+'?')
     return d
+
 
 def batch(start):
     return [dict(day=i,title='A thoughtful practice '+str(i),minutes=5,teaching=words(120),why=words(55),source_id=SOURCES[(i-1)%len(SOURCES)]['id'],action=words(75),reflection=words(12)+'?',adaptation=words(40)) for i in range(start,start+7)]
@@ -31,7 +42,7 @@ def batch(start):
 def response(obj):return dict(choices=[dict(message=dict(content=json.dumps(obj)))],usage={})
 
 class DeepReadingTests(unittest.TestCase):
-    def test_complete_reading_has_validated_sources_and_long_form_limits(self):
+    def test_complete_reading_has_sources_concise_opening_and_four_readable_perspectives(self):
         d=deep_reading();opening={k:v for k,v in d.items() if k not in ('sections','evidence')};opening.update(connection_1=d['evidence'][0]['interpretation'],connection_2=d['evidence'][1]['interpretation']);progress=[]
         responses=[response(opening)]+[response(dict(title=s['title'],text=s['text'])) for s in d['sections']]
         with patch.object(providers,'request_json',side_effect=responses) as request:
@@ -55,13 +66,40 @@ class DeepReadingTests(unittest.TestCase):
     def test_paragraph_array_is_assembled_and_ids_are_server_assigned(self):
         d=deep_reading();opening={k:v for k,v in d.items() if k not in ('sections','evidence')}
         opening.update(connection_1=d['evidence'][0]['interpretation'],connection_2=d['evidence'][1]['interpretation'],evidence=[{'answer_ids':['invented']}])
-        responses=[response(opening)]+[response(dict(title=section['title'],paragraphs=[words(58)]*7,source_id='invented')) for section in d['sections']]
+        responses=[response(opening)]+[response(dict(title=section['title'],paragraphs=section['text'].split('\n\n'),source_id='invented')) for section in d['sections']]
         with patch.object(providers,'request_json',side_effect=responses):
             result,_=providers.generate_reading({'openrouter_key':'mock'},example(),{})
         self.assertEqual(result['evidence'][0]['answer_ids'],['goal','note'])
         self.assertEqual(result['evidence'][1]['answer_ids'],['time','experience'])
-        self.assertEqual(len(result['sections'][0]['text'].split()),406)
+        self.assertTrue(150<=len(result['sections'][0]['text'].split())<=220)
         self.assertNotEqual(result['sections'][0]['source_id'],'invented')
+    def test_new_generation_rejects_padding_wall_of_text_and_incomplete_reflection(self):
+        for bad in [words(180), '\n\n'.join([words(45)]*4), section_text().rstrip('?'), section_text()+' '+words(100)]:
+            with self.subTest(text=bad[:30]),self.assertRaises(providers.ProviderError):
+                providers.validate_reading_section(bad)
+
+    def test_new_generation_rejects_repeated_sections(self):
+        d=deep_reading();d['sections'][1]['text']=d['sections'][0]['text']
+        with self.assertRaises(providers.ProviderError):providers.validate_deep_reading(d,SOURCES)
+
+    def test_opening_keeps_a_concrete_action_and_grounding_under_240_words(self):
+        d=deep_reading()
+        opening=[d['summary'],d['insight']]+[e['interpretation'] for e in d['evidence']]+list(d['first_step'].values())
+        self.assertLessEqual(sum(len(t.split()) for t in opening),240)
+        providers.validate_personal_reading(d,example())
+
+    def test_family_focus_uses_a_source_aligned_outline(self):
+        answers=example();answers.update(goal='family',focus='boundaries')
+        d=deep_reading();opening={k:v for k,v in d.items() if k not in ('sections','evidence')}
+        opening.update(connection_1=d['evidence'][0]['interpretation'],connection_2=d['evidence'][1]['interpretation'])
+        responses=[response(opening)]+[response(dict(title=s['title'],text=s['text'])) for s in d['sections']]
+        with patch.object(providers,'request_json',side_effect=responses) as request:
+            providers.generate_reading({'openrouter_key':'mock'},answers,{})
+        payload=json.loads(request.call_args_list[1].kwargs['data'])
+        data=json.loads(payload['messages'][1]['content'])
+        self.assertEqual(data['source']['id'],'proverbs_15_1')
+        self.assertIn('boundary',data['section_outline'][0])
+
     def test_rate_limit_is_not_retried_immediately(self):
         with patch.object(providers,'request_json',side_effect=providers.ProviderError('Provider returned HTTP 429')) as request:
             with self.assertRaises(providers.ProviderError):providers.generate_reading({'openrouter_key':'mock'},example(),{})

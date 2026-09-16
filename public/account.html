@@ -40,7 +40,7 @@
         <input id="loginEmail" type="email" name="email" autocomplete="username" maxlength="254" required placeholder="you@example.com">
         
         <label for="loginPassword">Password</label>
-        <input id="loginPassword" type="password" name="password" autocomplete="current-password" maxlength="128" required placeholder="Your password">
+        <input id="loginPassword" type="password" name="password" autocomplete="current-password" maxlength="128" required placeholder="Your password"><label class="password-visibility"><input type="checkbox" data-show-password="loginPassword" aria-controls="loginPassword"> Show password</label>
         
         <button type="submit" id="loginSubmitBtn">Sign In to My Account →</button>
       </form>
@@ -54,7 +54,7 @@
         <input id="regEmail" type="email" name="email" autocomplete="email" maxlength="254" required placeholder="you@example.com">
 
         <label for="regPassword">Create Password <span>(at least 8 characters)</span></label>
-        <input id="regPassword" type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" required placeholder="Min. 8 characters">
+        <input id="regPassword" type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" required placeholder="Min. 8 characters"><label class="password-visibility"><input type="checkbox" data-show-password="regPassword" aria-controls="regPassword"> Show password</label>
 
         <button type="submit" id="regSubmitBtn">Create Account & Start →</button>
       </form>
@@ -80,7 +80,7 @@
       <p>Enter your new password below to regain access to your account.</p>
       <form id="resetConfirmForm">
         <label for="newPassword">New Password <span>(at least 8 characters)</span></label>
-        <input id="newPassword" type="password" minlength="8" maxlength="128" required placeholder="Min. 8 characters">
+        <input id="newPassword" type="password" minlength="8" maxlength="128" required placeholder="Min. 8 characters"><label class="password-visibility"><input type="checkbox" data-show-password="newPassword" aria-controls="newPassword"> Show password</label>
         <button type="submit">Update Password & Sign In →</button>
       </form>
     </section>
@@ -120,5 +120,5 @@
       <a href="terms.html" style="color:#a49984;">Terms of Service</a>
     </footer>
   </main>
-</body>
+<script src="js/password-visibility.js"></script></body>
 </html>

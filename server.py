@@ -94,7 +94,7 @@ def mail(sid,kind,subject,body,due=None):
         con.execute('INSERT OR IGNORE INTO mail(id,sid,recipient,subject,body,due,kind,created,delivery_status) VALUES(?,?,?,?,?,?,?,?,?)',(mid,sid,d['email'],subject,body,due or time.time(),kind,time.time(),'pending' if mail_configured() else 'local'))
 
 def public_origin():
-    return (os.environ.get('PUBLIC_ORIGIN') or CONFIG.get('public_origin') or f'http://127.0.0.1:{PORT}').rstrip('/')
+    return (os.environ.get('PUBLIC_ORIGIN') or CONFIG.get('public_origin') or ('https://rabbidavid.org' if os.environ.get('PRODUCTION')=='1' or os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_HOSTNAME') else f'http://127.0.0.1:{PORT}')).rstrip('/')
 
 def recovery_mail(sid):
     d=get(sid); token=secrets.token_urlsafe(32)
@@ -781,6 +781,8 @@ def main():
         config.setdefault('mail_from','Rabbi David <delivery@rabbidavid.org>')
         config.setdefault('support_email','soporte@rabbidavid.org')
     if os.environ.get('PUBLIC_ORIGIN'):config['public_origin']=os.environ['PUBLIC_ORIGIN'].rstrip('/')
+    elif not config.get('public_origin') and (os.environ.get('PRODUCTION')=='1' or os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_HOSTNAME')):
+        config['public_origin']='https://rabbidavid.org' 
     if os.environ.get('FREE_TESTING'):config['free_testing']=os.environ['FREE_TESTING'].lower()=='true'
     if os.environ.get('PRODUCTION')=='1' and not config.get('public_origin'):p.error('PUBLIC_ORIGIN is required in production')
     init(config,args.data,args.port)

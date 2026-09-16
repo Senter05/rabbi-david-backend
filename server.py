@@ -774,6 +774,12 @@ def main():
     VOICE_ENABLED=args.enable_voice
     for field in ['smtp_host','smtp_port','smtp_username','smtp_password','mail_from','support_email']:
         if os.environ.get(field.upper()):config[field]=os.environ[field.upper()]
+    if config.get('smtp_password'):
+        config.setdefault('smtp_host','smtp.resend.com')
+        config.setdefault('smtp_port',587)
+        config.setdefault('smtp_username','resend')
+        config.setdefault('mail_from','Rabbi David <delivery@rabbidavid.org>')
+        config.setdefault('support_email','soporte@rabbidavid.org')
     if os.environ.get('PUBLIC_ORIGIN'):config['public_origin']=os.environ['PUBLIC_ORIGIN'].rstrip('/')
     if os.environ.get('FREE_TESTING'):config['free_testing']=os.environ['FREE_TESTING'].lower()=='true'
     if os.environ.get('PRODUCTION')=='1' and not config.get('public_origin'):p.error('PUBLIC_ORIGIN is required in production')

@@ -26,12 +26,12 @@ test('Personal package leads with playable audio and a single plan PDF; daily co
  assert.match(html,/<audio controls[^>]+src="\/api\/audio"/);
  assert.doesNotMatch(html,/This day must stay|Daily content|data-day|plan-days|saveRecoveryKey|showInbox|autoplay/);
 });
-test('Free and reading tiers do not expose premium downloads; prices retain $7/$32/$25',()=>{
+test('Free and reading tiers do not expose premium downloads; prices retain $7/$27/$20',()=>{
  const free=harness(fixture({tier:'free',plan:null,preview:{percent:40}})).html;
  const reading=harness(fixture({tier:'reading',plan:null})).html;
  for(const html of [free,reading])assert.doesNotMatch(html,/id="personalAudio"|href="\/api\/plan-pdf"/);
- assert.match(free,/class="price-num">\$7/);assert.match(free,/class="price-num">\$32/);
- assert.match(reading,/class="price-num">\$25/);assert.match(reading,/\$32 total/);
+ assert.match(free,/class="price-num">\$7/);assert.match(free,/class="price-num">\$27/);
+ assert.match(reading,/class="price-num">\$20/);assert.match(reading,/\$27 total/);
 });
 test('Pending plan cannot download or generate audio yet and continues polling',()=>{
  const result=harness(fixture({plan:null,plan_status:'preparing',voice:{status:'not_requested'}}));

@@ -30,11 +30,11 @@ class FreeTestingTests(unittest.TestCase):
         with patch.object(server.POOL,'submit') as submit:
             for _ in range(3):self.assertEqual(self.request('/api/free-preview',{})[0],200)
             jobs=[c.args[0] for c in submit.call_args_list]
-            self.assertEqual(jobs.count(server.plan_job),1);self.assertEqual(jobs.count(server.intro_job),1);self.assertEqual(jobs.count(server.start_voice),0)
+            self.assertEqual(jobs.count(server.plan_job),1);self.assertEqual(jobs.count(server.intro_job),0);self.assertEqual(jobs.count(server.start_voice),0)
             server.plan_job(self.sid,server.get(self.sid)['revision'])
             server.queue_preview_audio(self.sid);self.request('/api/free-preview',{})
             jobs=[c.args[0] for c in submit.call_args_list]
-            self.assertEqual(jobs.count(server.plan_job),1);self.assertEqual(jobs.count(server.intro_job),1);self.assertEqual(jobs.count(server.start_voice),1)
+            self.assertEqual(jobs.count(server.plan_job),1);self.assertEqual(jobs.count(server.intro_job),0);self.assertEqual(jobs.count(server.start_voice),1)
     def test_complete_content_and_pdf_visible_in_personal_preview(self):
         server.update(self.sid,lambda d:d.update(plan=draft_plan(d['answers'])))
         with patch.object(server.POOL,'submit'):

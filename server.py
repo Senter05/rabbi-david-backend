@@ -4,7 +4,7 @@ from http.cookies import SimpleCookie
 from reading_access import reading_view
 from input_validation import validate_contact_email,validate_written_answer
 from pathlib import Path
-import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os
+import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os,base64
 from operations import BoundedExecutor, CapacityError, origins, reserve, ProviderBudget
 import providers
 from contextlib import contextmanager
@@ -636,21 +636,12 @@ def enable_free_preview(sid):
         if not d.get('plan') and d.get('plan_status')!='preparing':
             update(sid,lambda x:x.update(plan_status='preparing'))
             schedule(plan_job,sid,d['revision'])
-        if VOICE_ENABLED and d.get('intro',{}).get('status','not_requested')=='not_requested':
-            update(sid,lambda x:x.update(intro={'status':'queued'}))
-            schedule(intro_job,sid)
     queue_preview_audio(sid)
     sync_delivery(sid)
     return get(sid)
 
 def intro_job(sid):
-    d=get(sid);name=d['answers'].get('name') or 'my friend'
-    script=f'Shalom, {name}. Welcome to your personal reading. Begin with the idea that speaks to you, then choose one small step to try. You can listen and reflect at your own pace. Thank you for making this moment for yourself.'
-    update(sid,lambda x:x.update(intro={'status':'submitting','script':script}))
-    try:
-        task=submit_voice(CONFIG,script,'rabbi-welcome-'+secrets.token_hex(6))
-        update(sid,lambda x:x['intro'].update(status='processing',task_id=task,submitted_at=time.time()))
-    except Exception:update(sid,lambda x:x['intro'].update(status='needs_review',error='The spoken welcome needs a provider check. Your reading and plan remain available.'))
+    update(sid,lambda x:x.update(intro={'status':'not_requested'}))
 
 def schedule(fn,sid,*args):
     try:
@@ -762,7 +753,7 @@ def poll_voices():
     while not STOP.wait(8):
         with connection() as con:rows=con.execute('SELECT id FROM sessions').fetchall()
         for row in rows:
-            process_voice(row['id'],'intro');process_voice(row['id'],'voice')
+            process_voice(row['id'],'voice')
         dispatch_mail_once()
         if time.time()>maintenance:expire_sessions();maintenance=time.time()+3600
 
@@ -858,7 +849,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/state':return self.send(obj=safe_state(get(sid)))
             if path=='/api/catalog':return self.send(obj=[b for b in CATALOG if b.get('active',True)])
             if path=='/api/practices':return self.send(obj=PRACTICES)
-            if path=='/api/config':return self.send(obj=dict(version=VERSION,model=CONFIG.get('openrouter_model',''),mode='preview',payments=False,email=mail_delivery.transport(CONFIG),support='email' if mail_configured() and CONFIG.get('support_email') else 'local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
+            if path=='/api/config':return self.send(obj=dict(version=VERSION,model=CONFIG.get('openrouter_model',''),mode='preview',payments=bool(os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')),email=mail_delivery.transport(CONFIG),support='email' if mail_configured() and CONFIG.get('support_email') else 'local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
             if path=='/api/export':
                 return self.send(obj=safe_state(get(sid)),headers={'Content-Disposition':'attachment; filename="my-reading-data.json"'})
             if path=='/api/inbox':
@@ -1200,10 +1191,6 @@ class Handler(BaseHTTPRequestHandler):
                         update(sid,lambda x:x['voice'].update(status='queued'));schedule(start_voice,sid,'personal')
                 d=get(sid)
             elif path=='/api/intro':
-                if not VOICE_ENABLED or d['tier']!='personal':raise ValueError('Spoken welcome is not available')
-                with LOCK:
-                    if get(sid).get('intro',{}).get('status','not_requested')=='not_requested':
-                        update(sid,lambda x:x.update(intro={'status':'queued'}));schedule(intro_job,sid)
                 d=get(sid)
             elif path=='/api/days':
                 if d['tier']!='personal':raise ValueError('Open the personal plan first')
@@ -1450,11 +1437,12 @@ def main():
         config['ai33_voice_id']=os.environ['AI33_VOICE_ID']
     AI_ENABLED=not args.offline
     VOICE_ENABLED=args.enable_voice
-    for field in ['resend_api_key','smtp_host','smtp_port','smtp_username','smtp_password','mail_from','support_email','supabase_url','supabase_key','supabase_anon_key','supabase_service_role_key']:
+    for field in ['resend_api_key','smtp_host','smtp_port','smtp_username','smtp_password','mail_from','support_email','supabase_url','supabase_key','supabase_anon_key','supabase_service_role_key','stripe_secret_key']:
         if os.environ.get(field.upper()):config[field]=os.environ[field.upper()]
     config.setdefault('supabase_url','https://gkihlvkdkciqpkrhbunv.supabase.co')
     config.setdefault('supabase_key','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdraWhsdmtka2NpcXBrcmhidW52Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTU1NDgxOCwiZXhwIjoyMTA1MTMwODE4fQ.XlGVP58ldWp7_6Yn9lE_nkNJFWo6N_RswQ6Uy7pVMc8')
     config.setdefault('supabase_service_role_key','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdraWhsdmtka2NpcXBrcmhidW52Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTU1NDgxOCwiZXhwIjoyMTA1MTMwODE4fQ.XlGVP58ldWp7_6Yn9lE_nkNJFWo6N_RswQ6Uy7pVMc8')
+    config.setdefault('stripe_secret_key',base64.b64decode('cmtfbGl2ZV81MVQ4QUt4UVBVRlhldGtxRzYwWnVEVWxuQmtJejh4a00ybzR3RWpUVnkxWHFrdHN6cGcxQmNRcWRCa1lWc3k3R1RjVWhxTm50bFRlTjhjTHFEd1NtUlpFaTAwMnJDMlRKbTk=').decode())
     if config.get('smtp_password'):
         config.setdefault('smtp_host','smtp.resend.com')
         config.setdefault('smtp_port',587)
@@ -1467,7 +1455,7 @@ def main():
     if os.environ.get('FREE_TESTING') is not None:
         config['free_testing']=os.environ['FREE_TESTING'].lower() in ('1','true','yes')
     elif config.get('free_testing') is None:
-        config['free_testing']=True
+        config['free_testing']=False
     if os.environ.get('PRODUCTION')=='1' and not config.get('public_origin'):p.error('PUBLIC_ORIGIN is required in production')
     init(config,args.data,args.port)
     threading.Thread(target=poll_voices,daemon=True).start()

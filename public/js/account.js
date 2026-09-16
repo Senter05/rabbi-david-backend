@@ -89,7 +89,7 @@
         const isPersonal = r.tier === 'personal';
         const isReading = r.tier === 'reading';
 
-        const tierLabel = isPersonal ? 'Personal Plan & Audio ($32)' : (isReading ? 'Complete Reading ($7)' : 'Free Opening Reflection');
+        const tierLabel = isPersonal ? 'Personal Plan & Audio ($27)' : (isReading ? 'Complete Reading ($7)' : 'Free Opening Reflection');
         const statusLabel = isReady ? 'Ready to Open' : (isGenerating ? 'Preparing Reading…' : 'In Progress (Step ' + (r.step || 1) + ')');
 
         const pdfUrl = r.pdf_url || `/api/pdf?id=${encodeURIComponent(r.id)}`;

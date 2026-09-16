@@ -268,5 +268,49 @@ class AuthTests(unittest.TestCase):
         res = sb.upload_asset('bucket', 'dummy.txt', 'dummy.txt')
         self.assertEqual(res['status'], 500)
 
+    def test_supabase_session_restore_on_empty_sqlite(self):
+        sid = 'supa_restored_session_xyz'
+        fake_data = {'started': True, 'email': 'restored@example.com', 'answers': {'name': 'CloudUser'}, 'step': 5, 'status': 'draft'}
+        with patch.object(server.SUPABASE, 'is_configured', return_value=True), \
+             patch.object(server.SUPABASE, 'get_session', return_value={'id': sid, 'user_id': 'uid_cloud_1', 'data': fake_data, 'updated': 1789500000.0}):
+            # Ensure not in SQLite
+            with server.connection() as con:
+                con.execute('DELETE FROM sessions WHERE id=?', (sid,))
+            # Call get(sid)
+            restored = server.get(sid)
+            self.assertIsNotNone(restored)
+            self.assertEqual(restored['email'], 'restored@example.com')
+            self.assertEqual(restored['answers']['name'], 'CloudUser')
+            # Verify it is now cached in SQLite
+            with server.connection() as con:
+                row = con.execute('SELECT data, user_id FROM sessions WHERE id=?', (sid,)).fetchone()
+            self.assertIsNotNone(row)
+            self.assertEqual(row['user_id'], 'uid_cloud_1')
+
+    def test_supabase_user_restore_on_empty_sqlite(self):
+        email = 'cloud_user_only@example.com'
+        salt, pw_hash = server.hash_password('CloudPass123')
+        fake_user = {'id': 'uid_cloud_99', 'email': email, 'password_hash': pw_hash, 'salt': salt, 'name': 'Cloud Only', 'email_verified': 1, 'created': 1789500000.0, 'updated': 1789500000.0}
+        with patch.object(server.SUPABASE, 'is_configured', return_value=True), \
+             patch.object(server.SUPABASE, 'get_user_by_email', return_value=fake_user):
+            with server.connection() as con:
+                con.execute('DELETE FROM users WHERE email=?', (email,))
+            u = server.get_user_by_email(email)
+            self.assertIsNotNone(u)
+            self.assertEqual(u['id'], 'uid_cloud_99')
+            self.assertEqual(u['name'], 'Cloud Only')
+            self.assertTrue(server.verify_password('CloudPass123', u['salt'], u['password_hash']))
+
+    def test_supabase_readings_list_sync(self):
+        uid = 'uid_multi_cloud_user'
+        s1 = {'id': 's1_remote', 'user_id': uid, 'data': {'started': True, 'status': 'ready', 'tier': 'personal', 'reading': {'title': 'Cloud Reading 1'}, 'answers': {'name': 'Cloud'}}, 'updated': 1789500010.0}
+        s2 = {'id': 's2_remote', 'user_id': uid, 'data': {'started': True, 'status': 'draft', 'tier': 'free', 'answers': {'name': 'Cloud', 'goal': 'calm'}}, 'updated': 1789500020.0}
+        with patch.object(server.SUPABASE, 'is_configured', return_value=True), \
+             patch.object(server.SUPABASE, 'get_user_sessions', return_value=[s2, s1]):
+            readings = server.get_user_readings_list(uid)
+            self.assertEqual(len(readings), 2)
+            self.assertEqual(readings[0]['id'], 's2_remote')
+            self.assertEqual(readings[1]['id'], 's1_remote')
+
 if __name__ == '__main__':
     unittest.main()

@@ -98,13 +98,37 @@ def get_user_by_email(email):
     email=email.strip().lower()
     with connection() as con:
         r=con.execute('SELECT * FROM users WHERE email=?',(email,)).fetchone()
-        return dict(r) if r else None
+        if r:return dict(r)
+    if SUPABASE and SUPABASE.is_configured():
+        try:
+            remote=SUPABASE.get_user_by_email(email)
+            if remote:
+                with connection() as con:
+                    con.execute('INSERT OR REPLACE INTO users(id,email,password_hash,salt,name,email_verified,verification_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?)',
+                                (remote['id'],remote['email'],remote.get('password_hash'),remote.get('salt'),remote.get('name',''),
+                                 int(remote.get('email_verified',0)),remote.get('verification_token'),
+                                 float(remote.get('created',time.time())),float(remote.get('updated',time.time()))))
+                return remote
+        except Exception as ex:print(f"[SUPABASE GET USER ERROR] {ex}",flush=True)
+    return None
 
 def get_user_by_id(uid):
     if not uid:return None
     with connection() as con:
         r=con.execute('SELECT * FROM users WHERE id=?',(uid,)).fetchone()
-        return dict(r) if r else None
+        if r:return dict(r)
+    if SUPABASE and SUPABASE.is_configured():
+        try:
+            remote=SUPABASE.get_user_by_id(uid)
+            if remote:
+                with connection() as con:
+                    con.execute('INSERT OR REPLACE INTO users(id,email,password_hash,salt,name,email_verified,verification_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?)',
+                                (remote['id'],remote['email'],remote.get('password_hash'),remote.get('salt'),remote.get('name',''),
+                                 int(remote.get('email_verified',0)),remote.get('verification_token'),
+                                 float(remote.get('created',time.time())),float(remote.get('updated',time.time()))))
+                return remote
+        except Exception as ex:print(f"[SUPABASE GET USER ERROR] {ex}",flush=True)
+    return None
 
 def create_or_get_user(email,password=None,name=''):
     email=email.strip().lower()
@@ -114,9 +138,13 @@ def create_or_get_user(email,password=None,name=''):
     salt,pw_hash=hash_password(password) if password else ('','')
     v_token=secrets.token_urlsafe(32)
     now=time.time()
+    user_dict={'id':uid,'email':email,'password_hash':pw_hash,'salt':salt,'name':name,'email_verified':0,'verification_token':v_token,'created':now,'updated':now}
     with connection() as con:
         con.execute('INSERT INTO users(id,email,password_hash,salt,name,email_verified,verification_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?)',
                     (uid,email,pw_hash,salt,name,0,v_token,now,now))
+    if SUPABASE and SUPABASE.is_configured():
+        try:POOL.submit(lambda: SUPABASE.upsert_user(user_dict))
+        except Exception as ex:print(f"[SUPABASE USER SYNC ERROR] {ex}",flush=True)
     return get_user_by_id(uid),True
 
 def safe_user(u):
@@ -135,11 +163,25 @@ def link_user_sessions(user_id,email,active_sid=None):
         if owner and owner!=user_id:raise ValueError('Sign out before changing accounts.')
         d['user_id']=user_id
         if not d.get('email'):d['email']=email.strip().lower()
-        con.execute('UPDATE sessions SET user_id=?,data=? WHERE id=?',(user_id,json.dumps(d),active_sid))
+        now=time.time()
+        con.execute('UPDATE sessions SET user_id=?,data=?,updated=? WHERE id=?',(user_id,json.dumps(d),now,active_sid))
+    if SUPABASE and SUPABASE.is_configured():
+        try:POOL.submit(lambda: SUPABASE.upsert_session(active_sid,d,user_id,now))
+        except Exception as ex:print(f"[SUPABASE LINK SYNC ERROR] {ex}",flush=True)
 
 
 def get_user_readings_list(user_id):
     if not user_id:return []
+    if SUPABASE and SUPABASE.is_configured():
+        try:
+            remote_sessions=SUPABASE.get_user_sessions(user_id)
+            if remote_sessions:
+                with connection() as con:
+                    for rs in remote_sessions:
+                        con.execute('INSERT OR REPLACE INTO sessions(id,data,updated,user_id) VALUES(?,?,?,?)',
+                                    (rs['id'],json.dumps(rs['data']) if isinstance(rs['data'],dict) else str(rs['data']),
+                                     float(rs.get('updated',time.time())),user_id))
+        except Exception as ex:print(f"[SUPABASE SESSIONS SYNC ERROR] {ex}",flush=True)
     readings=[]
     with connection() as con:
         rows=con.execute('SELECT id,data,updated FROM sessions WHERE user_id=? ORDER BY updated DESC',(user_id,)).fetchall()
@@ -179,15 +221,44 @@ def new_session():
 
 def get(sid):
     with connection() as con:r=con.execute('SELECT data FROM sessions WHERE id=?',(sid,)).fetchone()
-    return json.loads(r['data']) if r else None
+    if r:return json.loads(r['data'])
+    if SUPABASE and SUPABASE.is_configured():
+        try:
+            remote=SUPABASE.get_session(sid)
+            if remote and remote.get('data'):
+                d=remote['data']
+                uid=remote.get('user_id')
+                upd=float(remote.get('updated',time.time()))
+                d_str=json.dumps(d) if isinstance(d,dict) else str(d)
+                with connection() as con:
+                    con.execute('INSERT OR REPLACE INTO sessions(id,data,updated,user_id) VALUES(?,?,?,?)',(sid,d_str,upd,uid))
+                return d if isinstance(d,dict) else json.loads(d_str)
+        except Exception as ex:print(f"[SUPABASE GET SESSION ERROR] {ex}",flush=True)
+    return None
 
 def update(sid,fn):
     with LOCK:
         with connection() as con:
-            r=con.execute('SELECT data FROM sessions WHERE id=?',(sid,)).fetchone()
+            r=con.execute('SELECT data,user_id FROM sessions WHERE id=?',(sid,)).fetchone()
+            if not r and SUPABASE and SUPABASE.is_configured():
+                try:
+                    remote=SUPABASE.get_session(sid)
+                    if remote and remote.get('data'):
+                        d_rem=remote['data']
+                        uid_rem=remote.get('user_id')
+                        upd_rem=float(remote.get('updated',time.time()))
+                        con.execute('INSERT OR REPLACE INTO sessions(id,data,updated,user_id) VALUES(?,?,?,?)',
+                                    (sid,json.dumps(d_rem) if isinstance(d_rem,dict) else str(d_rem),upd_rem,uid_rem))
+                        r=con.execute('SELECT data,user_id FROM sessions WHERE id=?',(sid,)).fetchone()
+                except Exception as ex:print(f"[SUPABASE UPDATE RESTORE ERROR] {ex}",flush=True)
             if not r:raise ValueError('Session not found')
             d=json.loads(r['data']);fn(d)
-            con.execute('UPDATE sessions SET data=?,updated=? WHERE id=?',(json.dumps(d),time.time(),sid))
+            uid=d.get('user_id') or r['user_id']
+            now=time.time()
+            con.execute('UPDATE sessions SET data=?,updated=?,user_id=? WHERE id=?',(json.dumps(d),now,uid,sid))
+    if SUPABASE and SUPABASE.is_configured():
+        try:POOL.submit(lambda: SUPABASE.upsert_session(sid,d,uid,now))
+        except Exception as ex:print(f"[SUPABASE SESSION SYNC ERROR] {ex}",flush=True)
     return d
 
 def event(sid,name):
@@ -321,10 +392,15 @@ def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, curre
     else:
         status = 'local_preview'
     with connection() as con:
+        u = get_user_by_email(email)
+        uid = u['id'] if u else None
         con.execute(
-            "INSERT OR REPLACE INTO orders(id,session_id,email,book_id,amount,currency,created,delivery_status,provider_id) VALUES(?,?,?,?,?,?,?,?,?)",
-            (order_id, session_id, email, book_id, amount, currency, time.time(), status, provider_id)
+            "INSERT OR REPLACE INTO orders(id,session_id,email,book_id,amount,currency,created,delivery_status,provider_id,user_id) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (order_id, session_id, email, book_id, amount, currency, time.time(), status, provider_id, uid)
         )
+    if SUPABASE and SUPABASE.is_configured():
+        try:POOL.submit(lambda: SUPABASE.upsert_order({'id':order_id,'session_id':session_id,'email':email,'book_id':book_id,'amount':amount,'currency':currency,'delivery_status':status,'provider_id':provider_id,'user_id':uid,'created':time.time()}))
+        except Exception as ex:print(f"[SUPABASE EBOOK ORDER SYNC ERROR] {ex}",flush=True)
     return {'ok': True, 'status': status, 'provider_id': provider_id, 'book_id': book_id}
 
 def valid_answers(raw,complete=False,followup=None,unchanged=None):
@@ -365,10 +441,12 @@ def safe_state(d):
         if source:day['source']={k:source[k] for k in ('title','url')}
     if s['tier']!='personal':s['plan']=None
     s['voice']={k:v for k,v in s['voice'].items() if k in ['status','progress','error','credit_cost']}
-    s['voice']['available']=(DATA/'audio'/f'{s.get("audio_file", "none")}').is_file() if s.get('audio_file') else False
+    is_voice_local=(DATA/'audio'/f'{s.get("audio_file", "none")}').is_file() if s.get('audio_file') else False
+    s['voice']['available']=is_voice_local or bool(SUPABASE and SUPABASE.is_configured() and s.get('audio_file') and s.get('voice',{}).get('status')=='ready')
     intro=d.get('intro',{'status':'not_requested'})
     s['intro']={k:v for k,v in intro.items() if k in ['status','error','progress']}
-    s['intro']['available']=bool(d.get('intro_file') and (DATA/'audio'/d['intro_file']).is_file())
+    is_intro_local=bool(d.get('intro_file') and (DATA/'audio'/d['intro_file']).is_file())
+    s['intro']['available']=is_intro_local or bool(SUPABASE and SUPABASE.is_configured() and d.get('intro_file') and intro.get('status')=='ready')
     s.pop('intro_file',None)
     s.pop('audio_file',None);s.pop('usage',None)
     s.pop('reading_diagnostic',None);s.pop('plan_diagnostic',None)
@@ -569,6 +647,9 @@ def process_voice(sid,field):
             name=hashlib.sha256(sid.encode()).hexdigest()+('-welcome.mp3' if field=='intro' else '.mp3')
             update(sid,lambda x:x[field].update(status='download_pending'))
             download_audio(task['metadata']['audio_url'],DATA/'audio'/name)
+            if SUPABASE and SUPABASE.is_configured():
+                try:POOL.submit(lambda: SUPABASE.upload_asset('user-assets', DATA/'audio'/name, f"audio/{name}", 'audio/mpeg'))
+                except Exception as ex:print(f"[SUPABASE AUDIO UPLOAD ERROR] {ex}",flush=True)
             def done(x):
                 x['intro_file' if field=='intro' else 'audio_file']=name
                 x[field].update(status='ready',progress=100,credit_cost=task.get('credit_cost'),poll_errors=0)
@@ -741,12 +822,20 @@ class Handler(BaseHTTPRequestHandler):
                 d=get(sid);curr=self.current_user()
                 if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
                 if not d.get('audio_file') or d['voice']['status']!='ready':return self.send(404,{'error':'Audio is not ready'})
-                return self.send_file(DATA/'audio'/d['audio_file'],mime='audio/mpeg',private=True)
+                target=DATA/'audio'/d['audio_file']
+                if not target.is_file() and SUPABASE and SUPABASE.is_configured():
+                    SUPABASE.download_asset('user-assets', f"audio/{d['audio_file']}", target)
+                if not target.is_file():return self.send(404,{'error':'Audio file could not be retrieved'})
+                return self.send_file(target,mime='audio/mpeg',private=True)
             if path=='/api/welcome':
                 d=get(sid);curr=self.current_user()
                 if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
                 if not d.get('intro_file') or d.get('intro',{}).get('status')!='ready':return self.send(404,{'error':'Welcome is not ready'})
-                return self.send_file(DATA/'audio'/d['intro_file'],mime='audio/mpeg',private=True)
+                target=DATA/'audio'/d['intro_file']
+                if not target.is_file() and SUPABASE and SUPABASE.is_configured():
+                    SUPABASE.download_asset('user-assets', f"audio/{d['intro_file']}", target)
+                if not target.is_file():return self.send(404,{'error':'Welcome file could not be retrieved'})
+                return self.send_file(target,mime='audio/mpeg',private=True)
             if path=='/api/transcript':
                 d=get(sid);curr=self.current_user()
                 if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
@@ -1151,6 +1240,9 @@ class Handler(BaseHTTPRequestHandler):
                     uid=u['id'] if u else None
                     con.execute('INSERT OR REPLACE INTO orders(id,session_id,email,book_id,amount,currency,created,delivery_status,provider_id,user_id) VALUES(?,?,?,?,?,?,?,?,?,?)',
                                 (order_id,target_sid,email,'tier_'+tier,amount,'usd',time.time(),'completed',provider_id,uid))
+                if SUPABASE and SUPABASE.is_configured():
+                    try:POOL.submit(lambda: SUPABASE.upsert_order({'id':order_id,'session_id':target_sid,'email':email,'book_id':'tier_'+tier,'amount':amount,'currency':'usd','delivery_status':'completed','provider_id':provider_id,'user_id':uid,'created':time.time()}))
+                    except Exception as ex:print(f"[SUPABASE GRANT TIER ORDER SYNC ERROR] {ex}",flush=True)
                 return self.send(obj={'success':True,'tier':tier,'sid':target_sid})
             elif path=='/api/new':
                 self.new_cookie=new_session();return self.send(obj=safe_state(get(self.new_cookie)))

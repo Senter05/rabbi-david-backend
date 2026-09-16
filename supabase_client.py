@@ -4,6 +4,7 @@ Seamlessly falls back or disables when environment variables are not set.
 """
 import os
 import json
+import time
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -114,23 +115,84 @@ class SupabaseClient:
         return res
 
     # Database / PostgREST Methods
-    def upsert_user_reading(self, reading_data, token=None):
-        """Upserts a user reading record into user_readings table."""
+    def upsert_session(self, sid, data, user_id=None, updated=None):
+        if not self.configured: return {'status': 500, 'error': 'Not configured'}
         headers = {'Prefer': 'resolution=merge-duplicates'}
-        return self._request(
-            '/rest/v1/user_readings',
-            method='POST',
-            data=reading_data,
-            token=token,
-            use_service_key=True,
-            headers=headers
-        )
+        payload = [{
+            'id': sid,
+            'user_id': user_id,
+            'data': data if isinstance(data, (dict, list)) else json.loads(data),
+            'updated': float(updated or time.time())
+        }]
+        return self._request('/rest/v1/sessions', method='POST', data=payload, use_service_key=True, headers=headers)
 
-    def get_user_readings(self, user_id, token=None):
-        """Fetches all readings for a specific user."""
-        encoded_user_id = urllib.parse.quote(user_id)
-        path = f"/rest/v1/user_readings?user_id=eq.{encoded_user_id}&order=updated_at.desc"
-        return self._request(path, method='GET', token=token, use_service_key=True)
+    def get_session(self, sid):
+        if not self.configured: return None
+        res = self._request(f"/rest/v1/sessions?id=eq.{urllib.parse.quote(sid)}&select=id,user_id,data,updated", method='GET', use_service_key=True)
+        if res.get('status') == 200 and res.get('data') and len(res['data']) > 0:
+            return res['data'][0]
+        return None
+
+    def get_user_sessions(self, user_id):
+        if not self.configured or not user_id: return []
+        res = self._request(f"/rest/v1/sessions?user_id=eq.{urllib.parse.quote(user_id)}&order=updated.desc", method='GET', use_service_key=True)
+        if res.get('status') == 200 and res.get('data'):
+            return res['data']
+        return []
+
+    def upsert_user(self, user_dict):
+        if not self.configured or not user_dict: return {'status': 500, 'error': 'Not configured'}
+        headers = {'Prefer': 'resolution=merge-duplicates'}
+        payload = [{
+            'id': user_dict['id'],
+            'email': user_dict['email'],
+            'password_hash': user_dict.get('password_hash'),
+            'salt': user_dict.get('salt'),
+            'name': user_dict.get('name', ''),
+            'email_verified': int(user_dict.get('email_verified', 0)),
+            'verification_token': user_dict.get('verification_token'),
+            'created': float(user_dict.get('created', time.time())),
+            'updated': float(user_dict.get('updated', time.time()))
+        }]
+        return self._request('/rest/v1/users', method='POST', data=payload, use_service_key=True, headers=headers)
+
+    def get_user_by_email(self, email):
+        if not self.configured or not email: return None
+        res = self._request(f"/rest/v1/users?email=eq.{urllib.parse.quote(email.strip().lower())}&select=*", method='GET', use_service_key=True)
+        if res.get('status') == 200 and res.get('data') and len(res['data']) > 0:
+            return res['data'][0]
+        return None
+
+    def get_user_by_id(self, uid):
+        if not self.configured or not uid: return None
+        res = self._request(f"/rest/v1/users?id=eq.{urllib.parse.quote(uid)}&select=*", method='GET', use_service_key=True)
+        if res.get('status') == 200 and res.get('data') and len(res['data']) > 0:
+            return res['data'][0]
+        return None
+
+    def upsert_order(self, order_dict):
+        if not self.configured or not order_dict: return {'status': 500, 'error': 'Not configured'}
+        headers = {'Prefer': 'resolution=merge-duplicates'}
+        payload = [{
+            'id': order_dict['id'],
+            'session_id': order_dict.get('session_id'),
+            'email': order_dict['email'],
+            'book_id': order_dict.get('book_id'),
+            'amount': order_dict.get('amount', 0),
+            'currency': order_dict.get('currency', 'usd'),
+            'delivery_status': order_dict.get('delivery_status', 'pending'),
+            'provider_id': order_dict.get('provider_id'),
+            'user_id': order_dict.get('user_id'),
+            'created': float(order_dict.get('created', time.time()))
+        }]
+        return self._request('/rest/v1/orders', method='POST', data=payload, use_service_key=True, headers=headers)
+
+    def get_user_orders(self, user_id):
+        if not self.configured or not user_id: return []
+        res = self._request(f"/rest/v1/orders?user_id=eq.{urllib.parse.quote(user_id)}&order=created.desc", method='GET', use_service_key=True)
+        if res.get('status') == 200 and res.get('data'):
+            return res['data']
+        return []
 
     # Storage Methods
     def upload_asset(self, bucket, file_path, dest_name, content_type='application/octet-stream', token=None):
@@ -141,7 +203,8 @@ class SupabaseClient:
         headers = {
             'apikey': self.service_key,
             'Authorization': f"Bearer {self.service_key}",
-            'Content-Type': content_type
+            'Content-Type': content_type,
+            'x-upsert': 'true'
         }
         try:
             with open(file_path, 'rb') as f:
@@ -151,3 +214,24 @@ class SupabaseClient:
                 return {'status': resp.status, 'data': resp.read().decode('utf-8')}
         except Exception as e:
             return {'status': 500, 'error': str(e)}
+
+    def download_asset(self, bucket, dest_name, local_path):
+        """Downloads a binary asset from Supabase Storage and saves to local_path."""
+        if not self.configured:
+            return False
+        headers = {
+            'apikey': self.service_key,
+            'Authorization': f"Bearer {self.service_key}"
+        }
+        for endpoint in [f"{self.url}/storage/v1/object/authenticated/{bucket}/{dest_name}", f"{self.url}/storage/v1/object/public/{bucket}/{dest_name}"]:
+            try:
+                req = urllib.request.Request(endpoint, headers=headers, method='GET')
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    if resp.status == 200:
+                        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                        with open(local_path, 'wb') as f:
+                            f.write(resp.read())
+                        return True
+            except Exception:
+                continue
+        return False

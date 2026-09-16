@@ -1,67 +1,44 @@
--- Supabase SQL Schema for Rabbi David (https://rabbidavid.org)
--- Run this script in the Supabase SQL Editor to set up tables, RLS policies, and private storage.
+-- Supabase SQL Schema for Rabbi David Backend (https://rabbidavid.org)
+-- Run this script in the Supabase SQL Editor (Dashboard -> SQL Editor -> New query -> Run)
 
--- 1. Profiles Table (extends auth.users)
-CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+-- 1. Users Table (Mirror of SQLite users)
+CREATE TABLE IF NOT EXISTS public.users (
+    id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
+    password_hash TEXT,
+    salt TEXT,
     name TEXT,
-    email_verified BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    email_verified INTEGER DEFAULT 0,
+    verification_token TEXT,
+    created DOUBLE PRECISION NOT NULL,
+    updated DOUBLE PRECISION NOT NULL
 );
 
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own profile"
-    ON public.profiles FOR SELECT
-    USING (auth.uid() = id);
+CREATE POLICY "Allow full access to service_role on users"
+    ON public.users FOR ALL
+    USING (auth.role() = 'service_role');
 
-CREATE POLICY "Users can update their own profile"
-    ON public.profiles FOR UPDATE
-    USING (auth.uid() = id);
-
--- 2. User Readings Table
-CREATE TABLE IF NOT EXISTS public.user_readings (
+-- 2. Sessions Table (Mirror of SQLite sessions)
+CREATE TABLE IF NOT EXISTS public.sessions (
     id TEXT PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    status TEXT NOT NULL DEFAULT 'draft',
-    tier TEXT NOT NULL DEFAULT 'free',
-    title TEXT,
-    answers JSONB DEFAULT '{}'::jsonb,
-    reading JSONB,
-    plan JSONB,
-    voice JSONB,
-    completed_days JSONB DEFAULT '[]'::jsonb,
-    audio_file TEXT,
-    intro_file TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    user_id TEXT,
+    data JSONB NOT NULL,
+    updated DOUBLE PRECISION NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_readings_user_id ON public.user_readings(user_id);
-ALTER TABLE public.user_readings ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON public.sessions(user_id);
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own readings"
-    ON public.user_readings FOR SELECT
-    USING (auth.uid() = user_id);
+CREATE POLICY "Allow full access to service_role on sessions"
+    ON public.sessions FOR ALL
+    USING (auth.role() = 'service_role');
 
-CREATE POLICY "Users can insert their own readings"
-    ON public.user_readings FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own readings"
-    ON public.user_readings FOR UPDATE
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own readings"
-    ON public.user_readings FOR DELETE
-    USING (auth.uid() = user_id);
-
--- 3. User Orders Table
-CREATE TABLE IF NOT EXISTS public.user_orders (
+-- 3. Orders Table (Mirror of SQLite orders)
+CREATE TABLE IF NOT EXISTS public.orders (
     id TEXT PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     session_id TEXT,
     email TEXT NOT NULL,
     book_id TEXT,
@@ -69,55 +46,27 @@ CREATE TABLE IF NOT EXISTS public.user_orders (
     currency TEXT DEFAULT 'usd',
     delivery_status TEXT DEFAULT 'pending',
     provider_id TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    user_id TEXT,
+    created DOUBLE PRECISION NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_orders_user_id ON public.user_orders(user_id);
-ALTER TABLE public.user_orders ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_email ON public.orders(email);
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own orders"
-    ON public.user_orders FOR SELECT
-    USING (auth.uid() = user_id);
+CREATE POLICY "Allow full access to service_role on orders"
+    ON public.orders FOR ALL
+    USING (auth.role() = 'service_role');
 
--- 4. Trigger for Automatic Profile Creation on Signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-    INSERT INTO public.profiles (id, email, name, email_verified, created_at, updated_at)
-    VALUES (
-        new.id,
-        new.email,
-        COALESCE(new.raw_user_meta_data->>'name', ''),
-        COALESCE(new.email_confirmed_at IS NOT NULL, FALSE),
-        now(),
-        now()
-    )
-    ON CONFLICT (id) DO UPDATE
-    SET email = EXCLUDED.email,
-        name = EXCLUDED.name,
-        updated_at = now();
-    RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT OR UPDATE ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- 5. Storage: Create private bucket 'user-assets' if it does not exist
+-- 4. Storage: Create bucket 'user-assets' for audio and PDF files
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('user-assets', 'user-assets', false)
-ON CONFLICT (id) DO NOTHING;
+VALUES ('user-assets', 'user-assets', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
 
-CREATE POLICY "Users can read own assets"
+CREATE POLICY "Public read for user-assets"
     ON storage.objects FOR SELECT
-    USING (bucket_id = 'user-assets' AND auth.uid()::text = (storage.foldername(name))[1]);
+    USING (bucket_id = 'user-assets');
 
-CREATE POLICY "Users can upload own assets"
-    ON storage.objects FOR INSERT
-    WITH CHECK (bucket_id = 'user-assets' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can update own assets"
-    ON storage.objects FOR UPDATE
-    USING (bucket_id = 'user-assets' AND auth.uid()::text = (storage.foldername(name))[1]);
+CREATE POLICY "Service role full access on user-assets"
+    ON storage.objects FOR ALL
+    USING (bucket_id = 'user-assets' AND auth.role() = 'service_role');

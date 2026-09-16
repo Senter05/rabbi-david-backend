@@ -925,6 +925,10 @@ def main():
     elif not config.get('public_origin') and (os.environ.get('PRODUCTION')=='1' or os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_HOSTNAME')):
         config['public_origin']='https://rabbidavid.org' 
     if os.environ.get('FREE_TESTING'):config['free_testing']=os.environ['FREE_TESTING'].lower()=='true'
+    # The live pricing model has a free excerpt and two paid offerings.
+    # Keep automatic full-access testing restricted to non-production origins.
+    if config.get('public_origin','').rstrip('/')=='https://rabbidavid.org':
+        config['free_testing']=False
     if os.environ.get('PRODUCTION')=='1' and not config.get('public_origin'):p.error('PUBLIC_ORIGIN is required in production')
     init(config,args.data,args.port)
     threading.Thread(target=poll_voices,daemon=True).start()

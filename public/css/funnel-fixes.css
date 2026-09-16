@@ -27,4 +27,5 @@ label.password-visibility{display:flex;align-items:center;gap:10px;min-height:44
 @media(max-width:480px){.personal-media,.plan-download,.reading-at-glance,.reading-overview{padding:20px 16px}.plan-download .btn-unlock{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:16px 12px}}
 
 .reading-at-glance .starting-insight{font-size:18px;line-height:1.7;color:#ded9cc;margin:20px 0 0;padding-top:20px;border-top:1px solid #5b5034}
+.result-header-inner > .result-header-links{display:flex}
 .result-header-inner{min-height:64px;justify-content:space-between;gap:12px}.result-header-links{display:flex;gap:16px;align-items:center}.result-header-links a{display:inline-flex;align-items:center;min-height:44px;color:#e2bf61;white-space:nowrap;font-weight:600}@media(max-width:480px){.result-header-inner{padding-inline:12px;gap:8px}.result-header-inner .brand-wrap{gap:6px}.result-header-inner .brand-seal{width:28px;height:28px;flex:0 0 28px;font-size:18px}.result-header-inner .brand-text{font-size:13px;white-space:nowrap}.result-header-links{gap:12px}.result-header-links a{font-size:14px}}

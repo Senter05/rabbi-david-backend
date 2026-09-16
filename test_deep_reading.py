@@ -120,11 +120,36 @@ class DeepReadingTests(unittest.TestCase):
         self.assertEqual(second['day_numbers'],list(range(8,15)));self.assertEqual(len(second['previous_days']),7)
         self.assertTrue(all(p['max_tokens']==7000 for p in payloads))
         self.assertTrue(all(c.kwargs['timeout']==120 for c in request.call_args_list))
+    def test_plan_repairs_invalid_batch_once_with_field_feedback(self):
+        invalid=batch(1);invalid[0]['adaptation']=words(16);invalid[2]['teaching']=words(70)
+        with patch.object(providers,'request_json',side_effect=[response({'days':invalid}),response({'days':batch(1)}),response({'days':batch(8)})]) as request:
+            days=providers.generate_plan({'openrouter_key':'mock'},example(),draft_plan(example()))
+        self.assertEqual(len(days),14);self.assertEqual(request.call_count,3)
+        retry=json.loads(request.call_args_list[1].kwargs['data'])['messages'][-1]['content']
+        self.assertIn('day 1.adaptation: 16 words',retry)
+        self.assertIn('day 3.teaching: 70 words',retry)
+        self.assertEqual([d['day'] for d in days],list(range(1,15)))
+
+    def test_plan_repairs_only_second_batch_and_keeps_first(self):
+        invalid=batch(8);invalid[0]['minutes']=15
+        with patch.object(providers,'request_json',side_effect=[response({'days':batch(1)}),response({'days':invalid}),response({'days':batch(8)})]) as request:
+            days=providers.generate_plan({'openrouter_key':'mock'},example(),draft_plan(example()))
+        self.assertEqual(request.call_count,3)
+        self.assertEqual(days[0]['title'],batch(1)[0]['title'])
+        retry=json.loads(request.call_args_list[2].kwargs['data'])['messages'][-1]['content']
+        self.assertIn('day 8.minutes must be integer 5',retry)
+
+    def test_plan_does_not_retry_rate_limit_or_network_failure(self):
+        for message in ['Provider returned HTTP 429','Provider unavailable']:
+            with patch.object(providers,'request_json',side_effect=providers.ProviderError(message)) as request:
+                with self.assertRaises(providers.ProviderError):providers.generate_plan({'openrouter_key':'mock'},example(),draft_plan(example()))
+                self.assertEqual(request.call_count,1)
+
     def test_plan_rejects_short_teaching_wrong_source_and_wrong_day(self):
         for key,value in [('teaching','A generic idea.'),('day',9),('minutes',15)]:
             invalid=batch(1);invalid[0][key]=value
             with self.subTest(key=key),patch.object(providers,'request_json',return_value=response({'days':invalid})) as request:
                 with self.assertRaises(providers.ProviderError):providers.generate_plan({'openrouter_key':'mock'},example(),draft_plan(example()))
-                self.assertEqual(request.call_count,1)
+                self.assertEqual(request.call_count,2)
 
 if __name__=='__main__':unittest.main(verbosity=2)

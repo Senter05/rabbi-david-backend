@@ -18,13 +18,13 @@ class SecurityTests(unittest.TestCase):
         with patch.dict(os.environ,{'PRODUCTION':'1','RENDER':'true'}):
             for origin in ['https://untrusted.example','https://other-app.onrender.com','null']:
                 self.assertEqual(self.req('/api/state',headers={'Origin':origin})[0],403)
-                self.assertEqual(self.req('/api/enroll',{'name':'Alex','email':'alex@example.com'},headers={'Origin':origin})[0],403)
+                self.assertEqual(self.req('/api/enroll',{'name':'Alex','email':'alex@example.com','password':'FixturePassword123'},headers={'Origin':origin})[0],403)
             self.assertEqual(self.req('/api/state',headers={'Host':'attacker.example'})[0],403)
     def test_same_origin_and_international_email(self):
-        status,data=self.req('/api/enroll',{'name':'Alex','email':'alex@bücher.de'},headers={'Origin':'http://127.0.0.1:8101'})
+        status,data=self.req('/api/enroll',{'name':'Alex','email':'alex@bücher.de','password':'FixturePassword123'},headers={'Origin':'http://127.0.0.1:8101'})
         self.assertEqual(status,200);self.assertEqual(data['email'],'alex@xn--bcher-kva.de')
     def test_recovery_key_cross_browser_rotates_and_deletion_revokes(self):
-        self.req('/api/enroll',{'name':'Alex','email':'alex@example.com'})
+        self.req('/api/enroll',{'name':'Alex','email':'alex@example.com','password':'FixturePassword123'})
         _,first=self.req('/api/recovery-key',{})
         _,second=self.req('/api/recovery-key',{})
         other=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
@@ -40,7 +40,7 @@ class SecurityTests(unittest.TestCase):
             self.assertIsNone(result.headers.get('Set-Cookie'));self.assertIn('public',result.headers['Cache-Control'])
         self.assertEqual(self.req('/images/ebook-prayer-cover.webp',headers={'Range':'bytes=999999999-9999999999'},raw=True)[0],416)
     def test_followup_concurrent_calls_only_generate_once(self):
-        self.req('/api/enroll',{'name':'Alex','email':'alex@example.com'});self.req('/api/save',{'answers':test_app.example(),'step':12})
+        self.req('/api/enroll',{'name':'Alex','email':'alex@example.com','password':'FixturePassword123'});self.req('/api/save',{'answers':test_app.example(),'step':12})
         entered=threading.Event();release=threading.Event();results=[]
         def mock(*args):entered.set();release.wait(3);return 'What would help you feel more settled?'
         def call():results.append(self.req('/api/followup',{'consent':True})[0])

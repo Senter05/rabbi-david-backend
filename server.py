@@ -124,25 +124,19 @@ def safe_user(u):
     return {'id':u['id'],'email':u['email'],'name':u.get('name',''),'email_verified':bool(u.get('email_verified')),'created':u.get('created')}
 
 def link_user_sessions(user_id,email,active_sid=None):
-    if not user_id or not email:return
-    email=email.strip().lower()
+    # Knowing an email is not proof of ownership of its earlier readings/orders.
+    # Only attach the session whose bearer cookie the authenticated caller holds.
+    if not user_id or not email or not active_sid:return
     with connection() as con:
-        rows=con.execute('SELECT id,data,user_id FROM sessions').fetchall()
-        for r in rows:
-            if r['user_id']==user_id:continue
-            d=json.loads(r['data'])
-            if d.get('email','').strip().lower()==email:
-                d['user_id']=user_id
-                con.execute('UPDATE sessions SET user_id=?,data=? WHERE id=?',(user_id,json.dumps(d),r['id']))
-        if active_sid:
-            con.execute('UPDATE sessions SET user_id=? WHERE id=?',(user_id,active_sid))
-            r=con.execute('SELECT data FROM sessions WHERE id=?',(active_sid,)).fetchone()
-            if r:
-                d=json.loads(r['data'])
-                if not d.get('email'):d['email']=email
-                d['user_id']=user_id
-                con.execute('UPDATE sessions SET data=? WHERE id=?',(json.dumps(d),active_sid))
-        con.execute('UPDATE orders SET user_id=? WHERE (user_id IS NULL OR user_id="") AND email=?',(user_id,email))
+        row=con.execute('SELECT data,user_id FROM sessions WHERE id=?',(active_sid,)).fetchone()
+        if not row:return
+        d=json.loads(row['data'])
+        owner=row['user_id'] or d.get('user_id')
+        if owner and owner!=user_id:raise ValueError('Sign out before changing accounts.')
+        d['user_id']=user_id
+        if not d.get('email'):d['email']=email.strip().lower()
+        con.execute('UPDATE sessions SET user_id=?,data=? WHERE id=?',(user_id,json.dumps(d),active_sid))
+
 
 def get_user_readings_list(user_id):
     if not user_id:return []
@@ -506,12 +500,12 @@ def enable_free_preview(sid):
 
 def intro_job(sid):
     d=get(sid);name=d['answers'].get('name') or 'my friend'
-    script=f'{name}, your answers are safely saved. Your personal plan is being prepared around the priorities you shared. You can stay here or return to your reading space later. There is nothing more you need to fill in. Thank you for taking this time for yourself.'
+    script=f'Shalom, {name}. Welcome to your personal reading. Begin with the idea that speaks to you, then choose one small step to try. You can listen and reflect at your own pace. Thank you for making this moment for yourself.'
     update(sid,lambda x:x.update(intro={'status':'submitting','script':script}))
     try:
         task=submit_voice(CONFIG,script,'rabbi-welcome-'+secrets.token_hex(6))
         update(sid,lambda x:x['intro'].update(status='processing',task_id=task,submitted_at=time.time()))
-    except Exception:update(sid,lambda x:x['intro'].update(status='needs_review',error='The spoken welcome needs a provider check. Your plan preparation continues.'))
+    except Exception:update(sid,lambda x:x['intro'].update(status='needs_review',error='The spoken welcome needs a provider check. Your reading and plan remain available.'))
 
 def schedule(fn,sid,*args):
     try:
@@ -823,30 +817,26 @@ class Handler(BaseHTTPRequestHandler):
             if path in ['/api/save','/api/generate','/api/followup','/api/demo-tier','/api/voice','/api/intro'] and not d.get('started'):return self.send(403,{'error':'Enter your first name and email before beginning the test.'})
             if path=='/api/enroll':
                 name,email=valid_identity(body.get('name'),body.get('email'))
+                if d.get('started'):return self.send(obj=safe_state(d))
                 password=body.get('password')
-                user_id=None
-                if password:
-                    if not isinstance(password,str) or len(password)<8 or len(password)>128:
-                        raise ValueError('Please choose a password with at least 8 characters.')
-                    u=get_user_by_email(email)
-                    if u:
-                        if u.get('password_hash') and not verify_password(password, u['salt'], u['password_hash']):
-                            raise ValueError('An account with this email already exists. Please sign in with your password or use password recovery.')
-                        user_id=u['id']
-                    else:
-                        u,_=create_or_get_user(email,password,name)
-                        user_id=u['id']
-                        if SUPABASE.is_configured():
-                            try:SUPABASE.sign_up(email,password,name)
-                            except Exception as ex:print(f"[SUPABASE SIGNUP ERROR] {ex}",flush=True)
-                        if mail_configured():
-                            send_auth_mail(email,'Rabbi David | Welcome to your account',f"Shalom {name},\n\nYour account is ready. It gives you one place to return to your readings.\n\n{public_origin()}/account.html\n\nUse your email address and password to sign in.\n\nWith warmth,\nThe Rabbi David Team",'welcome')
+                if not isinstance(password,str) or not 8<=len(password)<=128:
+                    raise ValueError('Please choose a password with at least 8 characters.')
+                u=get_user_by_email(email)
+                if u:
+                    if not u.get('password_hash') or not verify_password(password,u['salt'],u['password_hash']):
+                        raise ValueError('An account with this email already exists. Please sign in with your password or use password recovery.')
                 else:
-                    u=get_user_by_email(email)
-                    if u:user_id=u['id']
-                    else:
-                        u,_=create_or_get_user(email,None,name)
-                        user_id=u['id']
+                    u,created=create_or_get_user(email,password,name)
+                    if not created and not verify_password(password,u['salt'],u['password_hash']):
+                        raise ValueError('Please sign in with your password or use password recovery.')
+                    if created and SUPABASE.is_configured():
+                        try:SUPABASE.sign_up(email,password,name)
+                        except Exception:print('[SUPABASE SIGNUP ERROR] Account synchronization failed',flush=True)
+                    if created and mail_configured():
+                        send_auth_mail(email,'Rabbi David | Welcome to your account',f"Shalom {name},\n\nYour account is ready. It gives you one place to return to your readings.\n\n{public_origin()}/account.html\n\nUse your email address and password to sign in.\n\nWith warmth,\nThe Rabbi David Team",'welcome')
+                user_id=u['id']
+                if d.get('user_id') and d['user_id']!=user_id:
+                    sid=new_session();self.new_cookie=sid;d=get(sid)
                 def enroll(x):
                     if x.get('started'):return
                     x.update(started=True,email=email,marketing=body.get('marketing') is True,enrolled_at=time.time())
@@ -1032,14 +1022,12 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(password,str) or len(password)<8 or len(password)>128:
                     raise ValueError('Please choose a password with at least 8 characters.')
                 existing=get_user_by_email(email)
-                if existing and existing.get('password_hash'):
-                    raise ValueError('An account with this email already exists. Please sign in.')
+                if existing:
+                    raise ValueError('An account with this email already exists. Please sign in or use password recovery.')
                 u,created=create_or_get_user(email,password,name)
-                if not created:
-                    salt,pw_hash=hash_password(password)
-                    with connection() as con:
-                        con.execute('UPDATE users SET password_hash=?,salt=?,name=?,updated=? WHERE id=?',(pw_hash,salt,name,time.time(),u['id']))
-                    u=get_user_by_id(u['id'])
+                if not created:raise ValueError('An account with this email already exists. Please sign in.')
+                if d.get('user_id') and d['user_id']!=u['id']:
+                    sid=new_session();self.new_cookie=sid;d=get(sid)
                 if SUPABASE.is_configured():
                     try:SUPABASE.sign_up(email,password,name)
                     except Exception as ex:print(f"[SUPABASE SIGNUP ERROR] {ex}",flush=True)
@@ -1060,6 +1048,8 @@ class Handler(BaseHTTPRequestHandler):
                 u=get_user_by_email(email)
                 if not u or not u.get('password_hash') or not verify_password(password,u['salt'],u['password_hash']):
                     raise ValueError('Invalid email or password.')
+                if d.get('user_id') and d['user_id']!=u['id']:
+                    sid=new_session();self.new_cookie=sid;d=get(sid)
                 link_user_sessions(u['id'],email,sid)
                 update(sid,lambda x:x.update(user_id=u['id'],email=email))
                 return self.send(obj={'user':safe_user(u),'readings':get_user_readings_list(u['id']),'message':'Signed in successfully.'})

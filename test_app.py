@@ -28,7 +28,7 @@ class JourneyTests(unittest.TestCase):
         except urllib.error.HTTPError as e:status=e.code;content=e.read()
         return status,content if raw else json.loads(content)
     def ready(self,goal='calm'):
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com'));self.req('/api/save',dict(answers=example(goal),step=12));self.req('/api/generate',dict(consent=True))
+        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'));self.req('/api/save',dict(answers=example(goal),step=12));self.req('/api/generate',dict(consent=True))
         for _ in range(100):
             status,d=self.req('/api/state')
             if d['status']!='generating':return d
@@ -75,13 +75,13 @@ class JourneyTests(unittest.TestCase):
         self.assertEqual(self.req('/api/demo-tier',dict(tier='reading'))[0],400)
         self.assertEqual(self.req('/api/save',dict(answers=d['answers'],step=11))[0],400)
         self.req('/api/new',{})
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com'))
+        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'))
         answers=example();answers['note']=''
         code,corrected=self.req('/api/save',dict(answers=answers,step=12))
         self.assertEqual(code,200);self.assertEqual(corrected['answer_issues'],[])
         self.assertEqual(corrected['status'],'draft')
     def test_invalid_answers_consent_and_csrf(self):
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com'));a=example();a['goal']='invented';self.assertEqual(self.req('/api/save',dict(answers=a))[0],400)
+        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'));a=example();a['goal']='invented';self.assertEqual(self.req('/api/save',dict(answers=a))[0],400)
         self.assertEqual(self.req('/api/generate',dict(consent=True))[0],400)
         self.req('/api/save',dict(answers=example(),step=12));self.assertEqual(self.req('/api/generate',dict(consent=False))[0],400)
         self.assertEqual(self.req('/api/new',{},headers={'Origin':'https://untrusted.example'})[0],403)
@@ -108,7 +108,7 @@ class JourneyTests(unittest.TestCase):
         code,body=self.req('/css/style.css',raw=True);self.assertEqual(code,200);self.assertGreater(len(body),1000)
 
     def test_optional_followup_survives_and_invalidates(self):
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com'));a=example();self.req('/api/save',dict(answers=a,step=12))
+        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'));a=example();self.req('/api/save',dict(answers=a,step=12))
         self.assertEqual(self.req('/api/followup',dict(consent=False))[0],400)
         _,d=self.req('/api/followup',dict(consent=True));self.assertEqual(len(d['questions']),13)
         a['personal_detail']='An unhurried cup of tea and one page in my notebook.'
@@ -122,7 +122,7 @@ class JourneyTests(unittest.TestCase):
         a=example();a['time']='10'
         self.assertEqual(self.req('/api/save',dict(answers=a,step=12))[0],400)
         _,current=self.req('/api/state');self.assertEqual(current['answers'],before['answers'])
-        self.req('/api/new',{});self.req('/api/enroll',dict(name='Alex',email='alex@example.com'))
+        self.req('/api/new',{});self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'))
         self.assertEqual(self.req('/api/save',dict(answers=a,step=12))[0],200)
         _,current=self.req('/api/state');self.assertEqual(current['answers']['time'],'10')
 
@@ -150,18 +150,18 @@ class JourneyTests(unittest.TestCase):
         for path,data in [('/api/save',dict(answers=example())),('/api/generate',dict(consent=True)),('/api/followup',dict(consent=True)),('/api/demo-tier',dict(tier='personal'))]:
             self.assertEqual(self.req(path,data)[0],403)
         for name,email in [('', 'a@example.com'),('Alex',''),('Alex','x@'),('Alex','a..b@example.com'),('<img>','a@example.com'),('123','a@example.com')]:
-            self.assertEqual(self.req('/api/enroll',dict(name=name,email=email))[0],400)
-        code,d=self.req('/api/enroll',dict(name=' Alex ',email='ALEX@EXAMPLE.COM'))
+            self.assertEqual(self.req('/api/enroll',dict(name=name,email=email,password='FixturePassword123'))[0],400)
+        code,d=self.req('/api/enroll',dict(name=' Alex ',email='ALEX@EXAMPLE.COM',password='FixturePassword123'))
         self.assertEqual(code,200);self.assertTrue(d['started']);self.assertEqual(d['email'],'alex@example.com');self.assertFalse(d['marketing'])
         self.assertEqual(d['answers']['name'],'Alex')
         self.assertEqual(self.req('/api/save',dict(answers={'name':''}))[0],400)
-        _,d=self.req('/api/enroll',dict(name='Other',email='other@example.com'))
+        _,d=self.req('/api/enroll',dict(name='Other',email='other@example.com',password='FixturePassword123'))
         self.assertEqual(d['email'],'alex@example.com')
         self.req('/api/new',{})
         self.assertEqual(self.req('/api/save',dict(answers=example()))[0],403)
 
     def test_double_generate_and_upgrade_do_not_duplicate_jobs(self):
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com'))
+        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'))
         self.req('/api/save',dict(answers=example(),step=12))
         with patch.object(server.POOL,'submit') as submit:
             with ThreadPoolExecutor(max_workers=4) as pool:

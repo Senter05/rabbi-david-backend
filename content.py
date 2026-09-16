@@ -5,37 +5,43 @@ def choice(key, title, hint, options):
     return dict(id=key, title=title, hint=hint, type='choice', options=[dict(value=v,label=l) for v,l in options])
 
 QUESTIONS = [
-    choice('goal','Which part of your life would you most like to focus on right now?','Choose your main priority. Your reading will focus on this area; there is no right or wrong answer.',[
+    choice('goal','What would you most like to work on right now?','Choose one priority for your reading.',[
         ('calm','More peace around money'),('direction','Clearer everyday priorities'),('family','A more supported family'),('legacy','A meaningful legacy'),('work','More purpose in my work'),('learning','Time to learn and grow')]),
-    choice('stage','Which situation best describes your everyday life right now?','Choose the closest fit if more than one applies. This helps us suggest realistic examples; you can prefer not to say.',[
+    choice('stage','What best describes your everyday life right now?','If several fit, choose the one that shapes your days most.',[
         ('working','Working or running a business'),('retired','Retired'),('transition','Making a life change'),('caring','Caring for someone'),('other','Something else'),('private','I prefer not to say')]),
-    choice('need','What would help you take a next step in the area you chose?','Choose one kind of support. This shapes the suggestions in your reading, not a judgment about you.',[
+    choice('need','What would be most useful to take away from your reading?','Choose what you need now, even if you have tried it before.',[
         ('perspective','A fresh perspective'),('routine','A simple routine'),('conversation','A thoughtful conversation'),('confidence','Confidence in my next step'),('curiosity','Exploring with no particular problem')]),
-    choice('feeling','When you think about this area of your life, which feeling fits best right now?','Choose the closest answer or a mixture. This helps us use an appropriate tone; it is not a mental health assessment.',[
+    choice('feeling','How do you feel about this part of your life today?','Choose the closest fit. There is no right answer.',[
         ('hopeful','Hopeful'),('uncertain','Uncertain'),('overwhelmed','A little overwhelmed'),('content','Content, and curious to learn'),('mixed','A mixture'),('private','I prefer not to say')]),
-    choice('experience','Which approach has helped you think through a difficult decision before?','Choose the approach you would be comfortable trying again. If you are unsure, choose trying something new.',[
-        ('reflection','Quiet reflection or prayer'),('writing','Writing things down'),('talking','Talking with someone I trust'),('learning','Reading and learning'),('new','I am trying something new')]),
-    choice('time','How long should a suggested daily reflection or exercise take?','This sets the length of your suggested activities, including the optional 14-day plan—not the time to finish this questionnaire.',[
+    choice('experience','Think of a difficult decision you faced. What helped you see it more clearly?','Choose what actually helped. It is fine to be unsure.',[
+        ('reflection','Quiet reflection or prayer'),('writing','Writing things down'),('talking','Talking with someone I trust'),('learning','Reading and learning'),('new','I am trying something new'),('unsure','I am not sure what helps yet')]),
+    choice('time','How much time would comfortably fit one daily exercise?','This adapts your activities and optional plan, not the length of this test.',[
         ('5','About 5 minutes'),('10','About 10 minutes'),('15','About 15 minutes'),('flexible','I need something flexible')]),
-    choice('style','What balance of practical ideas and spiritual teaching would you prefer?','This adjusts the language and examples in your reading. No religious knowledge or belief is required.',[
+    choice('style','How would you like Jewish wisdom explained in your reading?','No religious knowledge or belief is required.',[
         ('balanced','Spiritual reflection and everyday application'),('spiritual','More spiritual, with concepts explained'),('practical','Mostly practical, with light spiritual context')]),
-    choice('pace','What kind of structure would make a practice easier to continue?','Think about what works in your actual week. This changes how the suggestions are organized, not how committed you are.',[
+    choice('pace','What would help you return to a small practice during a busy week?','Choose the structure that would fit your life.',[
         ('gentle','A gentle pace, with room to pause'),('structure','A clear daily structure'),('flexible','Options I can adapt'),('accountability','A weekly moment to review')]),
-    choice('obstacle','What is the main practical limit your suggested activities should respect?','Choose the most relevant limit. We use this to adapt the activity, never to infer your income or health.',[
+    choice('obstacle','What most often makes it difficult to take a small step?','This helps us keep your activities realistic.',[
         ('time','Limited time'),('energy','Limited energy'),('cost','I need no-cost activities'),('unclear','Not knowing where to begin'),('none','Nothing in particular')]),
-    dict(id='note',title='What small change would make this area of your life feel better over the next two weeks?',hint='Optional. Describe one everyday situation or a change you would value. Leave out financial account details and private information about other people.',type='text',optional=True,maxLength=600),
+    dict(id='note',title='In one everyday moment, what would you like to be different?',hint='Optional. For example: “At dinner, I would like us to listen without interrupting.” Leave out names and private financial details.',type='text',optional=True,maxLength=600),
 ]
 BRANCHES = {
-    'calm':[choice('focus','When would a calmer approach to money-related concerns help you most?','Choose a time or situation for your first reflection. This does not assess your finances.',[('morning','The start of my day'),('evening','The end of my day'),('decisions','Before everyday decisions'),('general','In general')])],
-    'family':[choice('focus','What would support your family most?','You do not need to name anyone.',[('listening','Listening more closely'),('boundaries','Clearer boundaries'),('together','Time together'),('values','Sharing our values')])],
-    'legacy':[choice('focus','What do you most want to pass on?','Legacy can include much more than money.',[('stories','Family stories'),('values','Values and wisdom'),('conversation','An important conversation'),('habits','Helpful habits')])],
-    'work':[choice('focus','Which part of work is on your mind?','Your reading can focus on what is within your influence.',[('purpose','Meaning and purpose'),('balance','Balance and rest'),('integrity','Acting on my values'),('next','My next step at work')])],
-    'direction':[choice('focus','What would you most like to give your attention to?','Choose the direction that feels most useful.',[('routine','A steadier routine'),('learning','Learning something meaningful'),('space','Less unnecessary busyness'),('choice','One clearer decision')])],
-    'learning':[choice('focus','What would you like to explore?','We will start with concepts you can understand and reflect on.',[('gratitude','Gratitude and appreciating what I have'),('purpose','Purpose and responsibility'),('tradition','Jewish wisdom and tradition'),('habits','Thoughtful everyday habits')])]
+    'calm':[choice('focus','Which concern about money would you most like to reflect on?','Choose the closest fit. No amounts or account details are needed.',[('uncertainty','Living with uncertainty about the future'),('comparison','Comparing what I have with others'),('choices','Making everyday choices with less pressure'),('enough','Knowing what is enough for me'),('exploring','Exploring my relationship with money')])],
+    'family':[choice('focus','Where would you most like a change in family life?','Choose one area. You do not need to name anyone.',[('listening','Listening more closely'),('boundaries','Clearer boundaries'),('together','Time together'),('values','Sharing our values')])],
+    'legacy':[choice('focus','What would you most like to leave for others to carry forward?','This can be something you share now.',[('stories','Family stories'),('values','Values and wisdom'),('conversation','An important conversation'),('habits','Helpful habits')])],
+    'work':[choice('focus','Which part of your working life needs attention?','Choose what matters most at the moment.',[('purpose','Meaning and purpose'),('balance','Balance and rest'),('integrity','Acting on my values'),('next','My next step at work')])],
+    'direction':[choice('focus','Where would clearer priorities make the biggest difference?','Choose one place to begin.',[('routine','A steadier routine'),('learning','Learning something meaningful'),('space','Less unnecessary busyness'),('choice','One clearer decision')])],
+    'learning':[choice('focus','Which idea would you most like to understand and use?','We will explain it through everyday examples.',[('gratitude','Gratitude and appreciating what I have'),('purpose','Purpose and responsibility'),('tradition','Jewish wisdom and tradition'),('habits','Thoughtful everyday habits')])]
 }
 
+# Preserve the meaning of money answers saved before the revised concern question.
+LEGACY_MONEY_FOCUS = choice('focus','When would a calmer approach to money-related concerns help you most?','Choose a time or situation for your first reflection.',[('morning','The start of my day'),('evening','The end of my day'),('decisions','Before everyday decisions'),('general','In general')])
+
 def route(answers):
-    base=QUESTIONS[:2]+BRANCHES.get(answers.get('goal'),[])+QUESTIONS[2:]
+    branch=BRANCHES.get(answers.get('goal'),[])
+    if answers.get('goal')=='calm' and answers.get('focus') in {o['value'] for o in LEGACY_MONEY_FOCUS['options']}:
+        branch=[LEGACY_MONEY_FOCUS]
+    base=QUESTIONS[:2]+branch+QUESTIONS[2:]
     if answers.get('obstacle')=='cost':
         base=base[:-1]+[choice('no_cost','Which no-cost approach suits you?','No purchase or donation is needed to take part.',[('journal','Use a notebook I already have'),('quiet','A quiet spoken reflection'),('conversation','A conversation with someone I trust')])]+base[-1:]
     return base

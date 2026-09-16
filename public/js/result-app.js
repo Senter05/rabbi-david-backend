@@ -27,17 +27,19 @@ function restartTest(){const dialog=document.getElementById('offerDialog');dialo
 function wireReadingActions(){document.getElementById('startNewTest')?.addEventListener('click',restartTest);const retry=document.getElementById('retryPersonalReading');if(retry)retry.disabled=Boolean(state.answer_issues?.length);document.getElementById('retryPersonalReading')?.addEventListener('click',()=>act(async()=>{if(state.answer_issues?.length){say('Please edit the highlighted answers first.');return;}const button=document.getElementById('retryPersonalReading');button.disabled=true;try{state=await api('generate',{consent:true,refresh:true});render();}finally{if(document.getElementById('retryPersonalReading'))document.getElementById('retryPersonalReading').disabled=Boolean(state.answer_issues?.length);}}));}
 
 let audioProgress=1,audioProgressInterval=null,voiceRequested=false;
+let planProgress=1,planProgressInterval=null;
+
 function startAudioProgressTimer(){
  if(audioProgressInterval||typeof setInterval!=='function')return;
  audioProgress=Math.max(audioProgress,1);
  audioProgressInterval=setInterval(()=>{
   if(audioProgress<90){
-   audioProgress=Math.min(90,audioProgress+0.8);
+   audioProgress=Math.min(90,audioProgress+0.65);
   }else if(audioProgress<98){
    audioProgress=Math.min(98,audioProgress+0.15);
   }
   updateAudioProgressBar(Math.round(audioProgress));
- },800);
+ },1000);
 }
 function stopAudioProgressTimer(){
  if(audioProgressInterval&&typeof clearInterval==='function'){
@@ -55,7 +57,38 @@ function updateAudioProgressBar(percent){
 }
 function audioProgressBar(percent){
  const pct=Math.max(1,Math.min(100,Math.round(percent||audioProgress||1)));
- return `<div class="audio-progress-wrap" role="progressbar" aria-valuenow="${pct}" aria-valuemin="1" aria-valuemax="100" aria-label="Preparing Your Personal Audio with Rabbi David"><div class="audio-progress-header"><div class="audio-progress-pulse" aria-hidden="true"><span>✦</span></div><div class="audio-progress-title-wrap"><h3 class="audio-progress-title">Preparing Your Personal Audio with Rabbi David…</h3><p class="audio-progress-sub">Crafting your personalized audio reading with authentic voice synthesis. This usually takes 1 to 2 minutes.</p></div><span class="audio-progress-percent" id="audioProgressPercent">${pct}%</span></div><div class="audio-progress-bar"><div class="audio-progress-fill" id="audioProgressFill" style="width:${pct}%"><span class="audio-progress-shimmer" aria-hidden="true"></span></div></div><div class="audio-progress-steps"><span class="step-active">Synthesizing personal guidance</span><span>Aligning reflections &amp; plan</span><span>Finalizing master audio</span></div></div>`;
+ return `<div class="audio-progress-wrap" role="progressbar" aria-valuenow="${pct}" aria-valuemin="1" aria-valuemax="100" aria-label="Preparing Your Personal Audio with Rabbi David"><div class="audio-progress-header"><div class="audio-progress-pulse" aria-hidden="true"><span>✦</span></div><div class="audio-progress-title-wrap"><h3 class="audio-progress-title">Preparing Your Personal Audio with Rabbi David…</h3><p class="audio-progress-sub">Crafting your personalized audio reading with authentic voice synthesis. This usually takes 2 to 3 minutes.</p></div><span class="audio-progress-percent" id="audioProgressPercent">${pct}%</span></div><div class="audio-progress-bar"><div class="audio-progress-fill" id="audioProgressFill" style="width:${pct}%"><span class="audio-progress-shimmer" aria-hidden="true"></span></div></div><div class="audio-progress-steps"><span class="${pct<=40?'step-active':''}">Synthesizing personal guidance</span><span class="${pct>40&&pct<=85?'step-active':''}">Aligning reflections &amp; plan</span><span class="${pct>85?'step-active':''}">Finalizing master audio</span></div></div>`;
+}
+
+function startPlanProgressTimer(){
+ if(planProgressInterval||typeof setInterval!=='function')return;
+ planProgress=Math.max(planProgress,1);
+ planProgressInterval=setInterval(()=>{
+  if(planProgress<90){
+   planProgress=Math.min(90,planProgress+2.6);
+  }else if(planProgress<98){
+   planProgress=Math.min(98,planProgress+0.4);
+  }
+  updatePlanProgressBar(Math.round(planProgress));
+ },1000);
+}
+function stopPlanProgressTimer(){
+ if(planProgressInterval&&typeof clearInterval==='function'){
+  clearInterval(planProgressInterval);
+  planProgressInterval=null;
+ }
+}
+function updatePlanProgressBar(percent){
+ const fill=document.getElementById('planProgressFill');
+ const text=document.getElementById('planProgressPercent');
+ const wrap=document.querySelector('.plan-progress-wrap');
+ if(wrap)wrap.setAttribute('aria-valuenow',String(percent));
+ if(fill)fill.style.width=percent+'%';
+ if(text)text.textContent=percent+'%';
+}
+function planProgressBar(percent){
+ const pct=Math.max(1,Math.min(100,Math.round(percent||planProgress||1)));
+ return `<div class="plan-progress-wrap" role="progressbar" aria-valuenow="${pct}" aria-valuemin="1" aria-valuemax="100" aria-label="Preparing Your Personal 14-Day Plan"><div class="plan-progress-header"><div class="plan-progress-pulse" aria-hidden="true"><span>✦</span></div><div class="plan-progress-title-wrap"><h3 class="plan-progress-title">Preparing Your Personal 14-Day Plan…</h3><p class="plan-progress-sub">Structuring your customized daily practices, reflections, and printable PDF. This usually takes under 1 minute.</p></div><span class="plan-progress-percent" id="planProgressPercent">${pct}%</span></div><div class="plan-progress-bar"><div class="plan-progress-fill" id="planProgressFill" style="width:${pct}%"><span class="plan-progress-shimmer" aria-hidden="true"></span></div></div><div class="plan-progress-steps"><span class="${pct<=40?'step-active':''}">Tailoring daily practices</span><span class="${pct>40&&pct<=85?'step-active':''}">Structuring 14-day sequence</span><span class="${pct>85?'step-active':''}">Generating PDF document</span></div></div><p role="status" class="funnel-note" style="margin-top:10px;">Your plan is being prepared. The download will appear here when ready.</p>`;
 }
 
 function ensureVoiceTriggered(){
@@ -93,12 +126,14 @@ function render(){
  <section class="delivery-card compact-access" id="delivery"><p>Your reading is saved. Use your account to return on another device.</p><div class="media-links"><a href="account.html">My account →</a><a href="help.html">Help signing in →</a></div><details class="delivery-settings"><summary>Email preferences</summary><form id="contactForm"><label for="deliveryEmail">Your email</label><input class="q-input-text" type="email" id="deliveryEmail" value="${esc(state.email)}" required><label class="funnel-check"><input id="marketing" type="checkbox" ${state.marketing?'checked':''}>Send me reflection reminders and occasional book recommendations.</label><button class="funnel-secondary" type="submit">Save Preferences</button></form></details></section>
  <details class="reading-method"><summary>About your reading and how it is prepared</summary><p class="funnel-note">A personal reflection inspired by Jewish wisdom, prepared with the guidance of Rabbi David. Practices invite reflection and everyday action; financial outcomes are not guaranteed.</p></details><div class="restart-actions"><button type="button" class="funnel-secondary" id="startNewTest">Start a New Test</button></div><div class="funnel-links"><a href="privacy.html">Privacy</a><a href="index.html">Home</a></div>`;
  wire();
- const isVoiceBusy=['queued','submitting','processing','download_pending'].includes(state.voice?.status)||voiceRequested;
- if(state.plan_status==='preparing'||isVoiceBusy){
-  if(isVoiceBusy)startAudioProgressTimer();
+ const isPlanBusy=state.tier==='personal'&&(state.plan_status==='preparing'||!state.plan);
+ const isVoiceBusy=state.tier==='personal'&&(['queued','submitting','processing','download_pending'].includes(state.voice?.status)||voiceRequested||(!state.voice||state.voice.status==='not_requested'));
+ if(isPlanBusy)startPlanProgressTimer();
+ else stopPlanProgressTimer();
+ if(isVoiceBusy&&state.voice?.status!=='ready')startAudioProgressTimer();
+ else if(state.voice?.status==='ready')stopAudioProgressTimer();
+ if(state.plan_status==='preparing'||isVoiceBusy||isPlanBusy){
   poll();
- }else if(state.voice?.status==='ready'){
-  stopAudioProgressTimer();
  }
 }
 function audioStatus(media,label){
@@ -120,7 +155,7 @@ function personal(){
   audioContent=audioProgressBar();
  }else if(voice.status==='not_requested'){
   if(!state.plan){
-   audioContent=`<button class="btn-unlock" id="generateVoice" disabled>Preparing Your Personal Audio…</button><p class="funnel-note">Your audio will begin preparing automatically as soon as your plan is ready.</p>`;
+   audioContent=`<button class="btn-unlock" id="generateVoice" disabled style="display:none;">Preparing Your Personal Audio…</button>${audioProgressBar()}`;
   }else if(!state.voice_generation_enabled){
    audioContent=`<p class="funnel-note">Audio preparation is currently unavailable. Your PDF is still accessible.</p>`;
   }else{
@@ -130,7 +165,16 @@ function personal(){
   audioContent=audioStatus(voice,'personal audio');
  }
 
- return `<section class="personal-media" id="personalAudio"><span class="letter-eyebrow">LISTEN FIRST</span><h2>Your Personal Audio</h2><p>A spoken companion to your reading. Listen when you are ready.</p>${audioContent}</section><section class="plan-download" id="personalPlan"><h2>Your 14-Day Plan</h2><p>All fourteen days in one PDF. Save it to your phone or print it and follow at your own pace.</p>${state.plan?'<a class="btn-unlock" href="/api/plan-pdf" target="_blank" rel="noopener">Download 14-Day Plan →</a>':['error','needs_review'].includes(state.plan_status)?'<p role="status">Your plan could not be completed yet. Your reading is saved.</p><a class="funnel-secondary" href="contact.html">Get help with my plan →</a>':'<p role="status">Your plan is being prepared. The download will appear here when ready.</p>'}${state.plan_source==='guided'?`<p class="funnel-note">${state.plan_status==='preparing'?'Your detailed plan is being prepared. You can download the guided edition meanwhile.':'Your PDF is a guided edition based on your chosen priority.'}</p>${canRetryPlan?'<button class="funnel-secondary" id="retryPlan">Prepare My Detailed Plan</button>':''}`:''}</section>`;
+ let planContent='';
+ if(state.plan){
+  planContent=`<a class="btn-unlock" href="/api/plan-pdf" target="_blank" rel="noopener">Download 14-Day Plan →</a>`;
+ }else if(['error','needs_review'].includes(state.plan_status)){
+  planContent=`<p role="status">Your plan could not be completed yet. Your reading is saved.</p><a class="funnel-secondary" href="contact.html">Get help with my plan →</a>`;
+ }else{
+  planContent=planProgressBar();
+ }
+
+ return `<section class="personal-media" id="personalAudio"><span class="letter-eyebrow">LISTEN FIRST</span><h2>Your Personal Audio</h2><p>A spoken companion to your reading. Listen when you are ready.</p>${audioContent}</section><section class="plan-download" id="personalPlan"><h2>Your 14-Day Plan</h2><p>All fourteen days in one PDF. Save it to your phone or print it and follow at your own pace.</p>${planContent}${state.plan_source==='guided'?`<p class="funnel-note">${state.plan_status==='preparing'?'Your detailed plan is being prepared. You can download the guided edition meanwhile.':'Your PDF is a guided edition based on your chosen priority.'}</p>${canRetryPlan?'<button class="funnel-secondary" id="retryPlan">Prepare My Detailed Plan</button>':''}`:''}</section>`;
 }
 function recommendation(){const rec=state.recommendation;if(!rec?.book)return '';const b=rec.book;return `<section class="cross-sell-box"><div class="cross-sell-cover"><img src="${esc(b.cover)}" alt="${esc(b.title)}"></div><div><span class="vessel-tag">A COMPANION TO YOUR READING</span><h2>${esc(b.title)}</h2><p>${esc(rec.reason)}</p><p>${esc(b.author)} · ${b.pages} pages</p><a class="funnel-secondary" href="${esc(b.detailPage||'catalog.html')}">Explore This Book →</a><button class="funnel-secondary" id="alreadyOwn" data-book="${esc(b.id)}">I Already Own This Book</button></div></section>`;}
 function wire(){wireReadingActions();document.getElementById('retryPlan')?.addEventListener('click',()=>act(async()=>{state=await api('plan-retry',{consent:true});render();}));document.querySelectorAll('[data-tier]').forEach(b=>b.addEventListener('click',()=>offer(b.dataset.tier)));document.getElementById('generateVoice')?.addEventListener('click',()=>act(async()=>{state=await api('voice',{});render();}));document.getElementById('alreadyOwn')?.addEventListener('click',e=>act(async()=>{state=await api('owned',{owned:[...state.owned,e.target.dataset.book]});render();}));document.getElementById('contactForm')?.addEventListener('submit',e=>{e.preventDefault();act(async()=>{state=await api('contact',{email:document.getElementById('deliveryEmail').value,marketing:document.getElementById('marketing').checked});say('Your preferences are saved.');});});}
@@ -166,7 +210,7 @@ function renderPreserving(){
  if(nextFocus){nextFocus.focus({preventScroll:true});if(selection&&nextFocus.setSelectionRange){try{nextFocus.setSelectionRange(...selection);}catch{}}}
  if(typeof window!=='undefined'&&typeof window.scrollTo==='function')window.scrollTo({top:scroll,behavior:'instant'});
 }
-function poll(){clearTimeout(timer);timer=setTimeout(async()=>{try{const previous=updateSignature(state),next=await api('state');if(busy){poll();return;}const wasGenerating=['queued','submitting','processing','download_pending'].includes(state?.voice?.status)||voiceRequested;const isNowReady=next?.voice?.status==='ready'||next?.voice?.available;if(wasGenerating&&isNowReady){stopAudioProgressTimer();audioProgress=100;updateAudioProgressBar(100);await new Promise(res=>setTimeout(res,500));state=next;renderPreserving();return;}state=next;if(updateSignature(next)!==previous)renderPreserving();else poll();}catch(e){say('Connection interrupted. Your answers are saved. Reconnecting…');poll();}},3000);}
+function poll(){clearTimeout(timer);timer=setTimeout(async()=>{try{const previous=updateSignature(state),next=await api('state');if(busy){poll();return;}const wasPlanGenerating=!state.plan||state.plan_status==='preparing';const isPlanNowReady=Boolean(next?.plan&&next?.plan_status!=='preparing');if(wasPlanGenerating&&isPlanNowReady){stopPlanProgressTimer();planProgress=100;updatePlanProgressBar(100);}const wasGenerating=['queued','submitting','processing','download_pending'].includes(state?.voice?.status)||voiceRequested||(!state?.voice||state?.voice?.status==='not_requested');const isNowReady=next?.voice?.status==='ready'||next?.voice?.available;if(wasGenerating&&isNowReady){stopAudioProgressTimer();audioProgress=100;updateAudioProgressBar(100);await new Promise(res=>setTimeout(res,400));state=next;renderPreserving();return;}state=next;if(updateSignature(next)!==previous)renderPreserving();else poll();}catch(e){say('Connection interrupted. Your answers are saved. Reconnecting…');poll();}},2500);}
 
 async function openSavedReading(){
  try{

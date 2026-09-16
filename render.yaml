@@ -34,3 +34,9 @@ services:
         value: "Rabbi David <delivery@rabbidavid.org>"
       - key: SUPPORT_EMAIL
         value: "soporte@rabbidavid.org"
+      - key: SUPABASE_URL
+        value: "https://gkihlvkdkciqpkrhbunv.supabase.co"
+      - key: SUPABASE_KEY
+        value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdraWhsdmtka2NpcXBrcmhidW52Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTU1NDgxOCwiZXhwIjoyMTA1MTMwODE4fQ.XlGVP58ldWp7_6Yn9lE_nkNJFWo6N_RswQ6Uy7pVMc8"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdraWhsdmtka2NpcXBrcmhidW52Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTU1NDgxOCwiZXhwIjoyMTA1MTMwODE4fQ.XlGVP58ldWp7_6Yn9lE_nkNJFWo6N_RswQ6Uy7pVMc8"

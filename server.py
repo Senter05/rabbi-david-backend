@@ -1291,8 +1291,11 @@ def main():
         config['ai33_voice_id']=os.environ['AI33_VOICE_ID']
     AI_ENABLED=not args.offline
     VOICE_ENABLED=args.enable_voice
-    for field in ['resend_api_key','smtp_host','smtp_port','smtp_username','smtp_password','mail_from','support_email']:
+    for field in ['resend_api_key','smtp_host','smtp_port','smtp_username','smtp_password','mail_from','support_email','supabase_url','supabase_key','supabase_anon_key','supabase_service_role_key']:
         if os.environ.get(field.upper()):config[field]=os.environ[field.upper()]
+    config.setdefault('supabase_url','https://gkihlvkdkciqpkrhbunv.supabase.co')
+    config.setdefault('supabase_key','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdraWhsdmtka2NpcXBrcmhidW52Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTU1NDgxOCwiZXhwIjoyMTA1MTMwODE4fQ.XlGVP58ldWp7_6Yn9lE_nkNJFWo6N_RswQ6Uy7pVMc8')
+    config.setdefault('supabase_service_role_key','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdraWhsdmtka2NpcXBrcmhidW52Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTU1NDgxOCwiZXhwIjoyMTA1MTMwODE4fQ.XlGVP58ldWp7_6Yn9lE_nkNJFWo6N_RswQ6Uy7pVMc8')
     if config.get('smtp_password'):
         config.setdefault('smtp_host','smtp.resend.com')
         config.setdefault('smtp_port',587)

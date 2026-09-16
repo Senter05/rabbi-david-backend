@@ -24,6 +24,9 @@ def reading_view(reading, tier):
     result['sections']=[];locked=[]
     for section in reading.get('sections',[]):
         text=take(section['text']) if remaining else ''
-        if text:result['sections'].append({**section,'text':text})
+        if text:
+            visible={**section,'text':text}
+            if text!=section['text']:visible.pop('presentation',None)
+            result['sections'].append(visible)
         if text!=section['text']:locked.append(dict(title=section['title']))
     return result,dict(percent=40,locked_sections=locked)

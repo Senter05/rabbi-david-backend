@@ -27,5 +27,11 @@ label.password-visibility{display:flex;align-items:center;gap:10px;min-height:44
 @media(max-width:480px){.personal-media,.plan-download,.reading-at-glance,.reading-overview{padding:20px 16px}.plan-download .btn-unlock{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:16px 12px}}
 
 .reading-at-glance .starting-insight{font-size:18px;line-height:1.7;color:#ded9cc;margin:20px 0 0;padding-top:20px;border-top:1px solid #5b5034}
+.reading-chapter .reading-block{min-width:0;margin:0;padding:22px 0;border-top:1px solid #343b46}
+.reading-chapter .reading-block h3{font:600 16px/1.5 var(--font-inter,sans-serif);color:#f3dfa4;margin:0 0 10px;letter-spacing:0;text-transform:none}
+.reading-chapter .reading-block p{margin:0;max-width:65ch;overflow-wrap:break-word}
+.reading-chapter .reading-block .reading-source{font-size:14px;line-height:1.6;margin-top:14px}
+.reading-chapter .reading-block-3{background:#d4af370b;border-left:3px solid #c3a04b;border-top:0;border-radius:0 8px 8px 0;padding:18px;margin:4px 0 12px}
+@media(max-width:480px){.reading-chapter .reading-block{padding-block:18px}.reading-chapter .reading-block-3{padding:16px 12px}.reading-chapter .reading-block h3{font-size:16px}}
 .result-header-inner > .result-header-links{display:flex}
 .result-header-inner{min-height:64px;justify-content:space-between;gap:12px}.result-header-links{display:flex;gap:16px;align-items:center}.result-header-links a{display:inline-flex;align-items:center;min-height:44px;color:#e2bf61;white-space:nowrap;font-weight:600}@media(max-width:480px){.result-header-inner{padding-inline:12px;gap:8px}.result-header-inner .brand-wrap{gap:6px}.result-header-inner .brand-seal{width:28px;height:28px;flex:0 0 28px;font-size:18px}.result-header-inner .brand-text{font-size:13px;white-space:nowrap}.result-header-links{gap:12px}.result-header-links a{font-size:14px}}

@@ -1,5 +1,5 @@
 """Versioned editorial content. Personal plans are draft educational exercises."""
-VERSION = '2026-09-15-mobile-results-v5'
+VERSION = '2026-09-16-mobile-results-v6'
 
 def choice(key, title, hint, options):
     return dict(id=key, title=title, hint=hint, type='choice', options=[dict(value=v,label=l) for v,l in options])

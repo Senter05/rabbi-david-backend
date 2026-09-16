@@ -77,6 +77,25 @@ test('Not-yet-ready and failed readings never expose premium material',()=>{
 test('Missing media state uses a safe preparation action instead of crashing',()=>{
  assert.match(harness(fixture({voice:undefined,intro:undefined})).html,/id="generateVoice"/);
 });
+
+test('Structured teaching renders four labelled blocks with an escaped example and one source',()=>{
+ const data=fixture();data.reading.sections[0].presentation='guided-four-part-v1';
+ data.reading.sections[0].text='A teaching.\n\n<script>unsafe()</script>\n\nOne choice.\n\nWhat could you try?';
+ const {html}=harness(data);
+ for(const label of ['The teaching','An everyday example','A choice you can try','Pause and reflect'])assert.ok(html.includes(`<h3>${label}</h3>`));
+ assert.match(html,/&lt;script&gt;unsafe\(\)&lt;\/script&gt;/);assert.doesNotMatch(html,/<script>/);
+ assert.equal((html.match(/Source: <a/g)||[]).length,1);
+ assert.doesNotMatch(html,/<details[^>]*\bopen\b/);
+});
+
+test('Legacy text and incomplete excerpts are not assigned invented teaching roles',()=>{
+ for(const presentation of [undefined,'guided-four-part-v1']){
+  const data=fixture();data.reading.sections[0].presentation=presentation;
+  const {html}=harness(data);
+  assert.match(html,/<p>One meaningful paragraph\.<\/p>/);
+  assert.doesNotMatch(html,/<h3>The teaching<\/h3>/);
+ }
+});
 test('Only an explicit prepare action submits a voice request',async()=>{
  const result=harness(fixture({voice:{status:'not_requested'}}));
  assert.equal(result.calls.length,0);

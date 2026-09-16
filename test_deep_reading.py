@@ -42,6 +42,28 @@ def batch(start):
 def response(obj):return dict(choices=[dict(message=dict(content=json.dumps(obj)))],usage={})
 
 class DeepReadingTests(unittest.TestCase):
+    def test_structured_fields_become_one_canonical_text_without_duplicate_paid_content(self):
+        d=deep_reading();opening={k:v for k,v in d.items() if k not in ('sections','evidence')}
+        opening.update(connection_1=d['evidence'][0]['interpretation'],connection_2=d['evidence'][1]['interpretation'])
+        roles=('teaching','example','choice','reflection')
+        responses=[response(opening)]+[response(dict(title=s['title'],**dict(zip(roles,s['text'].split('\n\n'))))) for s in d['sections']]
+        with patch.object(providers,'request_json',side_effect=responses):
+            result,_=providers.generate_reading({'openrouter_key':'mock'},example(),{})
+        for original,section in zip(d['sections'],result['sections']):
+            self.assertEqual(section['text'],original['text'])
+            self.assertEqual(section['presentation'],'guided-four-part-v1')
+            self.assertFalse(set(roles).intersection(section))
+
+    def test_incomplete_structured_response_is_repaired_not_displayed_as_complete(self):
+        d=deep_reading();opening={k:v for k,v in d.items() if k not in ('sections','evidence')}
+        opening.update(connection_1=d['evidence'][0]['interpretation'],connection_2=d['evidence'][1]['interpretation'])
+        broken=dict(title='Incomplete teaching',teaching='Something incomplete',text=d['sections'][0]['text'])
+        responses=[response(opening),response(broken)]+[response(dict(title=s['title'],text=s['text'])) for s in d['sections']]
+        with patch.object(providers,'request_json',side_effect=responses) as request:
+            result,_=providers.generate_reading({'openrouter_key':'mock'},example(),{})
+        self.assertEqual(request.call_count,6)
+        self.assertNotIn('presentation',result['sections'][0])
+
     def test_complete_reading_has_sources_concise_opening_and_four_readable_perspectives(self):
         d=deep_reading();opening={k:v for k,v in d.items() if k not in ('sections','evidence')};opening.update(connection_1=d['evidence'][0]['interpretation'],connection_2=d['evidence'][1]['interpretation']);progress=[]
         responses=[response(opening)]+[response(dict(title=s['title'],text=s['text'])) for s in d['sections']]

@@ -77,13 +77,14 @@ class SupabaseClient:
 
     # Auth Methods
     def sign_up(self, email, password, name=''):
-        """Registers a new user in Supabase Auth."""
+        """Registers a new user in Supabase Auth pre-confirmed via Admin API to avoid unbranded emails."""
         payload = {
             'email': email,
             'password': password,
-            'data': {'name': name}
+            'email_confirm': True,
+            'user_metadata': {'name': name}
         }
-        res = self._request('/auth/v1/signup', method='POST', data=payload)
+        res = self._request('/auth/v1/admin/users', method='POST', data=payload, use_service_key=True)
         return res
 
     def sign_in(self, email, password):

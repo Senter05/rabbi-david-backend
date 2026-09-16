@@ -350,6 +350,95 @@ def validate_plan_batch(obj,requested,allowed_time,assigned_sources):
     return batch
 
 
+def generate_narration_script(config, answers, reading=None, plan=None):
+    """Generate an authentic, deeply moving, spoken audio narration in Rabbi David's voice.
+    Target: 1300-1500 spoken words (7-10 minutes of audio at standard 140-150 WPM).
+    Plain text only for Text-to-Speech: no markdown, no headers, no bracketed stage directions.
+    """
+    name = (answers.get('name') or 'my friend').strip()
+    goal = answers.get('goal', 'calm')
+    goal_label = next((o['label'] for q in route(answers) if q['id']=='goal' for o in q.get('options',[]) if o['value']==goal), goal)
+    time_mins = answers.get('time', '10') if answers.get('time') in ['5', '10', '15'] else '10'
+
+    key = config.get('openrouter_key')
+    if key:
+        prompt = (
+            "You are Rabbi David, an authentic, deeply wise, and warm Jewish teacher and elder living in Jerusalem. "
+            f"Write a continuous spoken monologue for an intimate personal audio recording directly addressing the listener named {name}. "
+            f"The listener chose {goal_label} as their primary life focus. "
+            "Your speech MUST be between 1300 and 1500 words in length (7 to 10 minutes of spoken audio). "
+            "Speak with quiet spiritual authority, immense wisdom on abundance and money, and profound pastoral warmth. "
+            "Never use sterile hypotheticals like 'Imagine you are at dinner'. Share authentic encounters from your study in Jerusalem, "
+            "timeless teachings of the Torah and sages on building true wealth without losing your soul, "
+            "and clear psychological insights into the listener's dilemmas. "
+            "Walk them through their 14-day path of quiet daily action. "
+            "Close with a solemn, deeply moving rabbinic blessing of prosperity, protection, family peace, and joy. "
+            "\n\nCRITICAL FORMAT RULES: "
+            "Return ONLY the spoken words in English. NO Markdown, NO bolding, NO bullet points, NO section titles or headings. "
+            "NO stage directions or audio tags (never include [pause], (sigh), [music], etc.). "
+            "The text will be read directly by an AI voice engine, so every word must be what Rabbi David speaks aloud. "
+            "Ensure the total word count is strictly between 1300 and 1500 words."
+        )
+        user_data = dict(name=name, goal=goal_label, time=time_mins, reading_summary=(reading or {}).get('summary', ''), reading_insight=(reading or {}).get('insight', ''))
+        payload = dict(
+            model=config.get('openrouter_model', '~deepseek/deepseek-flash-latest'),
+            max_tokens=3500,
+            temperature=0.45,
+            reasoning={'enabled': False},
+            messages=[
+                dict(role='system', content=prompt),
+                dict(role='user', content=json.dumps(user_data, ensure_ascii=False))
+            ]
+        )
+        try:
+            res = request_json(
+                'https://openrouter.ai/api/v1/chat/completions',
+                headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'},
+                data=json.dumps(payload).encode(),
+                timeout=90
+            )
+            raw = res.get('choices', [{}])[0].get('message', {}).get('content') or ''
+            clean = re.sub(r'[*#_`~\[\]\(\)]', '', raw).strip()
+            clean = re.sub(r'\n{3,}', '\n\n', clean)
+            words = clean.split()
+            if 1250 <= len(words) <= 1650:
+                if len(words) > 1500:
+                    clean = fit_words(clean, 1300, 1500)
+                return clean
+        except Exception:
+            pass
+
+    evidence_parts = []
+    if reading and isinstance(reading.get('evidence'), list):
+        for item in reading['evidence']:
+            if isinstance(item, dict) and item.get('interpretation'):
+                evidence_parts.append(item['interpretation'].strip())
+    evidence_str = (' ' + ' '.join(evidence_parts)) if evidence_parts else ''
+
+    step_parts = []
+    if reading and isinstance(reading.get('first_step'), dict):
+        for k in ('action', 'why', 'reflection'):
+            v = reading['first_step'].get(k)
+            if isinstance(v, str) and v.strip():
+                step_parts.append(v.strip())
+    step_str = (' ' + ' '.join(step_parts)) if step_parts else ''
+
+    paragraphs = [
+        f"Shalom, {name}. Welcome into my study here in Jerusalem. Pull up a chair, sit comfortably, and let us take a quiet breath together. For many decades, men and women from every corner of the world have walked through my door carrying the very questions that are resting upon your heart today. Some arrive with hurried footsteps and restless eyes, burdened by the noise of the marketplace and the constant pressure to achieve and provide. Others arrive in moments of transition, wondering if the path they have chosen is truly aligned with their deeper purpose. When I read your responses, I felt a deep kinship with where you stand right now. You have chosen to focus your heart and attention upon {goal_label}. That is not an accident, {name}. In our tradition, the desire to bring order, dignity, and peace to your life is recognized as a sacred calling. It is an awakening of the soul that asks for more than mere survival; it asks for enduring blessing.",
+        "Let me share something fundamental with you that the ancient sages taught about prosperity and peace. In modern life, we are conditioned to believe that wealth is purely a numbers game, a race against time, a relentless accumulation driven by anxiety. We are told that if we only push harder and sleep less, we will eventually reach a magical horizon where fear disappears. But in the ancient wisdom of the Torah, we understand that money and abundance are forms of spiritual energy. The Hebrew word for wealth is related to the word for deep inner satisfaction. A person who is consumed by fear can possess millions in the bank and yet live as a pauper in their soul, terrified of loss. Conversely, a person who understands how to build a proper vessel—what our tradition calls a kli—can receive blessings in a way that endures, bringing peace to their family and clarity to their days.",
+        f"Over thirty years ago, an experienced merchant sat right across from me in this very room, {name}. He had built a thriving business, yet his hands trembled as he poured tea. He told me that despite his outward success, every morning began with a knot of dread. He was consumed by the fear of an unexpected loss, and in his hurry to protect himself, he was rushing every decision and neglecting his health. He asked me, Rabbi, how do I break free from this relentless cycle? I looked into his eyes and shared the ancient teaching from the Ethics of the Fathers: Who is truly wealthy? The one who rejoices in their portion and knows how to govern their own spirit with deliberate patience. I gave him a simple discipline: to sit in silence for just ten minutes every morning, name three quiet mercies already sustaining his breath, and commit to making considered decisions rather than reacting out of panic.",
+        f"It took three weeks before the shift took root, but when it did, everything around him transformed. He stopped making frantic compromises. He treated his clients with a calm confidence that immediately drew greater trust and respect. Within a year, his business was not only more profitable, but his household was filled with tranquility. You see, {name}, the obstacle you mentioned carrying is not a permanent barrier. It is simply a mirror showing where your vessel needs strengthening.{evidence_str} When you try to carry water in a fractured jar, the water leaks out no matter how much you pour into it. Our work together is to repair the vessel so that the blessings you cultivate can settle and remain in your life.{step_str}",
+        f"Consider your daily life right now. You indicated that you have about {time_mins} minutes each day for personal reflection. Do not make the mistake of thinking that {time_mins} minutes is too modest to make a difference. The great master Rabbi Israel Salanter taught that a drop of water falling consistently upon a stone will eventually carve a path through solid granite, whereas a violent torrent simply washes over the surface and leaves the stone unchanged. In spiritual and practical life, consistency is infinitely more powerful than occasional intensity. When you dedicate even ten minutes of your morning to stillness, discernment, and deliberate intention, you set the spiritual temperature for the entire day.",
+        "Let us examine the deeper layers of the four teachings prepared in your personal reading. The first perspective speaks to the power of deliberate pacing. In Proverbs, King Solomon wrote that the plans of the diligent lead surely to abundance, but everyone who is hasty comes only to poverty. That word hasty does not merely mean moving quickly; it means acting from an inner state of panic. When you feel financial urgency, your natural instinct is to rush into the first available option. But wisdom demands that you pause at the threshold. Before you agree to an obligation, before you spend your hard-earned money, ask yourself: Am I choosing this out of fear, or am I choosing this out of quiet clarity? Even a single deep breath taken between an impulse and an action can save you months of regret.",
+        "The second perspective addresses the boundaries you keep around your daily energy and your loved ones. In our tradition, peace within the home, what we call shalom bayit, is considered the foundation upon which all worldly success rests. You cannot build a meaningful legacy if the foundation beneath your feet is cracked with exhaustion. Learn to say a gentle, firm no to demands that drain your spirit without bearing fruit. Guard your evenings and your mornings. When you sit with those you love, be fully present with them. Do not let your thoughts wander to the balance sheet. A person who can master their presence in the present moment possesses a magnetic dignity that opens doors in business that no aggressive tactic could ever open.",
+        "The third perspective invites you to recognize honest effort as a sacred partnership with the Divine. In Psalm 90, the psalmist prays: Establish the work of our hands upon us; yes, establish the work of our hands. Notice that the prayer does not ask for gold to rain down from heaven without labor. It asks that the honest labor of our hands be endowed with permanence and meaning. Every ethical service you provide, every thoughtful task you complete with integrity, is an act of sanctification. Do not despise the small beginnings. Treat your daily work not merely as a transaction to pay bills, but as your contribution to repairing the world. When your work is grounded in service, prosperity naturally follows as a byproduct of your character.",
+        "The fourth perspective is the wisdom of returning. In Hebrew, renewal is called teshuvah, which literally means to return home. You will have days over the next two weeks when you feel tired, distracted, or discouraged. You may skip a morning of reflection or find yourself slipping back into old anxieties. When that happens, {name}, do not criticize yourself. Guilt is a wasteful emotion that drains the energy you need for progress. Simply recognize where you are, gently turn your attention back to your intention, and take the next small step. The righteous person does not succeed because they never stumble; they succeed because they rise up again with humility and perseverance.",
+        "Now, looking ahead to the fourteen-day plan that has been placed into your hands, I want you to make a promise to yourself. Do not approach this plan as an examination to be passed or a heavy burden added to an already full schedule. Approach it as a daily appointment with your own soul. Each morning, open the day's guidance, read the teaching, and engage with the practical action with an open heart. Some days will ask you to write a single sentence of gratitude. Other days will ask you to set a clear boundary, evaluate an expenditure, or speak a word of encouragement. Follow the steps faithfully, one day at a time, and allow this timeless wisdom to quietly reorder your inner life.",
+        f"As we conclude this time together, {name}, I want to offer you an ancient blessing from the depths of my heart. May the Almighty bless you and protect you. May the light of divine wisdom illuminate your eyes and grant you discernment in all your dealings. May peace rest upon your household, health reside in your body, and fruitful abundance reward the honest labor of your hands. May you walk with dignity, speak with kindness, and live with the profound knowledge that your life is guided, cherished, and rich with promise. Amen, and may your journey forward be blessed with light and peace."
+    ]
+    return "\n\n".join(paragraphs)
+
+
 def submit_voice(config,text,file_name):
     if not config.get('ai33_key') or not config.get('ai33_voice_id'):raise ProviderError('Voice provider is not configured')
     boundary='RD'+uuid.uuid4().hex

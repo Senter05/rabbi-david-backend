@@ -1,5 +1,6 @@
 """White, accessible branded reading PDFs. Access rules remain server-side."""
 from io import BytesIO
+import math
 from pathlib import Path
 from html import escape
 from reading_access import reading_view
@@ -97,10 +98,10 @@ def _plan_sources():
 
 
 def plan_pdf(data):
-    """An independent 18-page plan: cover, guide, fourteen days, review, sources.
+    """An independent 17-page plan: cover, guide, fourteen days, and Rabbi David's personal blessing.
 
     Content is measured before drawing. Oversized input fails explicitly rather
-    than overflowing, dropping text or quietly adding a nineteenth page.
+    than overflowing, dropping text or quietly adding an eighteenth page.
     """
     days = data.get('plan') or []
     if len(days) != 14 or [item.get('day') for item in days] != list(range(1, 15)):
@@ -110,8 +111,6 @@ def plan_pdf(data):
     name = str(answers.get('name') or 'you')
     legacy = any(not item.get('teaching') or not item.get('why') or not item.get('source_id') for item in days)
     guided = data.get('plan_source') == 'guided'
-    used_ids = list(dict.fromkeys(str(item.get('source_id')) for item in days if str(item.get('source_id')) in sources))
-    unknown_ids = {str(item.get('source_id')) for item in days if item.get('source_id') and str(item.get('source_id')) not in sources}
     buf = BytesIO()
     canvas = pdfcanvas.Canvas(buf, pagesize=A4)
     canvas.setTitle('Your fourteen-day plan - Rabbi David')
@@ -121,6 +120,28 @@ def plan_pdf(data):
     # The fixed page frame leaves a generous reading area and clear page numbers.
     ivory = colors.HexColor('#FBF8F0')
     pale_gold = colors.HexColor('#DACBA6')
+
+    def draw_star_of_david(c, x, y, r=4.2):
+        c.saveState()
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(0.7)
+        p1 = c.beginPath()
+        for i, a in enumerate([90, 210, 330]):
+            rad = math.radians(a)
+            px, py = x + r * math.cos(rad), y + r * math.sin(rad)
+            if i == 0: p1.moveTo(px, py)
+            else: p1.lineTo(px, py)
+        p1.close()
+        c.drawPath(p1, stroke=1, fill=0)
+        p2 = c.beginPath()
+        for i, a in enumerate([270, 30, 150]):
+            rad = math.radians(a)
+            px, py = x + r * math.cos(rad), y + r * math.sin(rad)
+            if i == 0: p2.moveTo(px, py)
+            else: p2.lineTo(px, py)
+        p2.close()
+        c.drawPath(p2, stroke=1, fill=0)
+        c.restoreState()
 
     def frame(page, label):
         canvas.setFillColor(ivory)
@@ -143,7 +164,7 @@ def plan_pdf(data):
         canvas.setFillColor(INK)
         canvas.setFont('RDInter', 8)
         canvas.drawString(left, 34, label)
-        canvas.drawRightString(right, 34, f'{page} / 18')
+        canvas.drawRightString(right, 34, f'{page} / 17')
 
     def render(page, label, items, compact=False):
         """Measure the whole page at a readable size before painting any text."""
@@ -160,6 +181,9 @@ def plan_pdf(data):
                 'title': ParagraphStyle('pt', fontName='RDFraunces', fontSize=title_size, leading=title_leading, textColor=NAVY),
                 'label': ParagraphStyle('pl', fontName='RDSemibold', fontSize=9, leading=13, textColor=GOLD),
                 'small': ParagraphStyle('ps', fontName='RDInter', fontSize=11 if not compact else size, leading=15, textColor=INK),
+                'signature': ParagraphStyle('psig', fontName='RDFraunces', fontSize=18, leading=22, textColor=NAVY),
+                'signature_sub': ParagraphStyle('psigsub', fontName='RDCinzel', fontSize=9.5, leading=13, textColor=GOLD),
+                'signature_bless': ParagraphStyle('psigbless', fontName='RDInter', fontSize=10, leading=14, textColor=INK, leftIndent=16),
             }
             measured = []
             total = 0
@@ -167,7 +191,7 @@ def plan_pdf(data):
                 gap *= gap_scale
                 paragraph = Paragraph(escape(str(text)).replace('\n', '<br/>'), styles[style])
                 _, ph = paragraph.wrap(right-left, height)
-                measured.append((paragraph, ph, gap))
+                measured.append((paragraph, ph, gap, style))
                 total += ph + gap
             if total <= top-bottom:
                 break
@@ -175,7 +199,15 @@ def plan_pdf(data):
             raise ValueError(f'Plan page {page} exceeds its readable page area ({total:.0f} points needed, {top-bottom:.0f} available); shorten the supplied content.')
         frame(page, label)
         y = top
-        for paragraph, ph, gap in measured:
+        for paragraph, ph, gap, style in measured:
+            if style == 'signature':
+                canvas.saveState()
+                canvas.setStrokeColor(GOLD)
+                canvas.setLineWidth(1.5)
+                canvas.line(left, y + 2, left + 42, y + 2)
+                canvas.restoreState()
+            elif style == 'signature_bless':
+                draw_star_of_david(canvas, left + 5, y - ph / 2, 4.2)
             paragraph.drawOn(canvas, left, y-ph)
             y -= ph + gap
         canvas.showPage()
@@ -217,7 +249,7 @@ def plan_pdf(data):
         if teaching:
             items.extend([('A TEACHING TO CONSIDER', 'label', 5), (teaching, 'body', 9)])
             if source:
-                items.append(('Source: ' + str(source['title']) + '. Full reference on page 18.', 'small', 12))
+                items.append(('Source: ' + str(source['title']), 'small', 12))
             else:
                 items.append(('No verified source reference was saved for this teaching. Treat it as an unattributed reflection, not a quotation from a traditional text.', 'small', 12))
         elif guided:
@@ -228,25 +260,59 @@ def plan_pdf(data):
             items.extend([('WHY THIS STEP WAS CHOSEN', 'label', 5), (day['why'], 'body', 12)])
         items.extend([('YOUR MODERN PRACTICE', 'label', 5), (str(day.get('action') or 'No action was saved for this day.'), 'body', 12), ('PAUSE & REFLECT', 'label', 5), (str(day.get('reflection') or 'What did you notice today?'), 'body', 12), ('MAKE IT WORK FOR YOU', 'label', 5), (str(day.get('adaptation') or 'You may shorten this practice or pause and return later.'), 'body', 0)])
         render(day['day']+2, f"Day {day['day']:02d} | Your saved daily practice", items)
-    render(17, 'Review and continue', [
-        ('YOUR NEXT CHAPTER', 'label', 13), ('Keep What Helped.\nMake Room to Adjust.', 'title', 20),
-        ('There is no score to pass. This review helps you decide what deserves a place in your everyday life.', 'body', 20),
-        ('LOOK BACK', 'label', 6), ('Which practice was easiest to return to?\nWhat felt useful, even in a small way?\nWhat did not fit your time, energy or beliefs?', 'body', 24),
-        ('NOTICE WITHOUT JUDGING', 'label', 6), ('Name one thing you understand more clearly. If nothing feels different, write that honestly. You do not need to turn your experience into a success story.', 'body', 24),
-        ('CHOOSE ONE THING TO KEEP', 'label', 6), ('Select one exercise to repeat next week. Decide when you will try it, how long you will give it and what you will do if the day becomes busy.', 'body', 24),
-        ('A SIMPLE CONTINUATION NOTE', 'label', 6), ('I would like to keep…\nI will make it easier by…\nI will review it again on…', 'body', 23),
-        ('Further reading is optional. Your ability to continue does not depend on buying another book or programme.', 'small', 0),
-    ])
-    references = [('READ WITH CONTEXT', 'label', 10), ('Sources & the Modern Exercises', 'title', 17), ('The references below are selected from the editorial source library. Daily teachings are paraphrases or interpretations. The action prompts, questions and adaptations are modern exercises prepared for this experience; they are not instructions quoted from these texts.', 'body', 17)]
-    for i, sid in enumerate(used_ids, 1):
-        source = sources[sid]
-        references.append((f"{i}. {source['title']}\n{source['url']}", 'small', 10))
-    if not used_ids:
-        references.append(('No source references were recorded in this saved plan. This PDF does not add references after the fact or attribute its exercises to a traditional text.', 'body', 15))
-    if unknown_ids:
-        references.append(('Some saved source identifiers could not be matched to the editorial library. No replacement citations have been invented.', 'small', 12))
-    references.append(('Prepared with AI assistance from the answers and saved plan associated with this reading. Source inclusion is not an endorsement by a publisher, institution or scholar.', 'small', 0))
-    render(18, 'Sources and editorial context', references, compact=True)
+
+    display_name = name if name and name.lower() != 'you' else 'Friend'
+    goal_label = labels.get('goal')
+    time_label = labels.get('time')
+    obstacle_label = labels.get('obstacle')
+
+    if goal_label:
+        goal_phrase = f"seeking {goal_label.lower()}"
+    else:
+        goal_phrase = "seeking a deeper sense of peace and purposeful abundance"
+
+    if time_label:
+        time_phrase = f"devoting {time_label.lower()} each day"
+    else:
+        time_phrase = "setting aside quiet moments each day"
+
+    if obstacle_label:
+        obstacle_phrase = f"even while navigating {obstacle_label.lower()}"
+        obstacle_sentence = f"Never let {obstacle_label.lower()} or the noise of daily demands lead you to believe your steps are too small."
+    else:
+        obstacle_phrase = "even amidst the pressures of daily life"
+        obstacle_sentence = "Never let the noise and haste of the world lead you to believe your steps are too small."
+
+    p1 = (
+        f"My friend {display_name}, as we complete these fourteen days together, I write to you not to give you "
+        f"another task or obligation, but to offer a personal pastoral blessing for your journey. When you began "
+        f"these pages, you shared that your heart is {goal_phrase}. In our sacred tradition, we know that true "
+        f"abundance—berachah—is not the frantic accumulation of more possessions, but the deep presence of peace (shalom) "
+        f"and gratitude within what you already hold."
+    )
+    p2 = (
+        f"You chose to give your time to this daily practice, {time_phrase}, {obstacle_phrase}. "
+        f"In the eyes of Heaven, a single honest pause and an intentional act of goodness carry greater weight than years "
+        f"of rushed ambition. {obstacle_sentence} Every time you choose integrity, patience, and kindness in your daily decisions, "
+        f"you build an enduring vessel for blessing in your home, your family, and your livelihood."
+    )
+    p3 = (
+        "As you walk forward beyond this companion, may you move with quiet confidence and courage, knowing you are never "
+        "alone in your striving. May the Almighty watch over you and keep you. May light illuminate your path, and may peace, "
+        "health, and true prosperity accompany every step you take."
+    )
+
+    page17_items = [
+        ('A PASTORAL BLESSING FROM RABBI DAVID', 'label', 12),
+        (f'Walking Forward in Peace & Blessing, {display_name}', 'title', 16),
+        (p1, 'body', 14),
+        (p2, 'body', 14),
+        (p3, 'body', 18),
+        ('Rabbi David', 'signature', 3),
+        ('Rav David ben-Avraham · Jerusalem', 'signature_sub', 10),
+        ('May peace and blessing rest upon the work of your hands.', 'signature_bless', 0),
+    ]
+    render(17, 'A personal blessing from Rabbi David', page17_items)
     canvas.save()
     return buf.getvalue()
 

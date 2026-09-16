@@ -9,7 +9,7 @@ from operations import BoundedExecutor, CapacityError, origins, reserve, Provide
 import providers
 from contextlib import contextmanager
 from content import VERSION,route,GOALS,PRACTICES,fallback_reading,draft_plan
-from providers import generate_reading,generate_plan,generate_followup,submit_voice,poll_voice,download_audio,ProviderError
+from providers import generate_reading,generate_plan,generate_followup,generate_narration_script,submit_voice,poll_voice,download_audio,ProviderError
 from documents import reading_pdf,plan_pdf
 from source_library import SOURCE_BY_ID
 from email.message import EmailMessage
@@ -506,22 +506,24 @@ def start_voice(sid,kind='personal'):
     name=d['answers'].get('name') or 'my friend'
     if kind=='welcome':script=f'{name}, your answers are saved. Your personal reading is being prepared. You can stay here, or return to your personal space later. We will show you when it is ready. Thank you for taking this time for yourself.'
     else:
-        script=f"{name}, welcome to your personal reading. "+d['reading']['summary']+' '+d['reading']['insight']+' '
-        script+=' '.join(item['interpretation'] for item in d['reading'].get('evidence',[]))+' '
-        step=d['reading'].get('first_step')
-        if step:script+=' '.join(step[k] for k in ('action','why','reflection'))+' '
-        # The full reading stays in the written report; narration gives a coherent
-        # spoken selection without turning a deeper report into a 20-minute audio.
-        def spoken_excerpt(text):
-            paragraph=text.split('\n\n')[0]
-            sentences=re.split(r'(?<=[.!?])\s+',paragraph)
-            selected=[]
-            for sentence in sentences:
-                if selected and len((' '.join(selected+[sentence])).split())>150:break
-                selected.append(sentence)
-            return ' '.join(selected)
-        script+=' '.join(spoken_excerpt(s['text']) for s in d['reading']['sections'])
-        script+=' For the next fourteen days, your written plan invites you to take one small step at a time. '+d['plan'][0]['action']+' At the end of each week, notice what felt useful and what you would change. There is no need to rush. You can return to this reading whenever you wish.'
+        try:
+            script=generate_narration_script(CONFIG, d['answers'], d.get('reading') or {}, d.get('plan') or [])
+        except Exception:
+            script=f"{name}, welcome to your personal reading. "+d['reading']['summary']+' '+d['reading']['insight']+' '
+            script+=' '.join(item['interpretation'] for item in d['reading'].get('evidence',[]))+' '
+            step=d['reading'].get('first_step')
+            if step:script+=' '.join(step[k] for k in ('action','why','reflection'))+' '
+            def spoken_excerpt(text):
+                paragraph=text.split('\n\n')[0]
+                sentences=re.split(r'(?<=[.!?])\s+',paragraph)
+                selected=[]
+                for sentence in sentences:
+                    if selected and len((' '.join(selected+[sentence])).split())>150:break
+                    selected.append(sentence)
+                return ' '.join(selected)
+            script+=' '.join(spoken_excerpt(s['text']) for s in d['reading']['sections'])
+            plan_action=d.get('plan',[{}])[0].get('action','') if d.get('plan') else ''
+            script+=' For the next fourteen days, your written plan invites you to take one small step at a time. '+plan_action+' At the end of each week, notice what felt useful and what you would change. There is no need to rush. You can return to this reading whenever you wish.'
     update(sid,lambda x:x.update(voice={'status':'submitting','script':script,'kind':kind}))
     try:
         task=submit_voice(CONFIG,script,'rabbi-reading-'+secrets.token_hex(6))
@@ -805,7 +807,7 @@ class Handler(BaseHTTPRequestHandler):
                 if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
                 if d['tier']!='personal':return self.send(403,{'error':'Your personal plan is required'})
                 if d['status']!='ready' or not d.get('plan'):return self.send(409,{'error':'Your plan is still being prepared'})
-                return self.send(body=plan_pdf(d),mime='application/pdf',headers={'Content-Disposition':'attachment; filename="your-personal-14-day-plan.pdf"'})
+                return self.send(body=plan_pdf(d),mime='application/pdf',headers={'Content-Disposition':'inline; filename="your-personal-14-day-plan.pdf"'})
             if path=='/api/plan-email':
                 mid=urllib.parse.parse_qs(u.query).get('id',[''])[0]
                 with connection() as con:owned=con.execute("SELECT id FROM mail WHERE id=? AND sid=? AND kind='plan'",(mid,sid)).fetchone()

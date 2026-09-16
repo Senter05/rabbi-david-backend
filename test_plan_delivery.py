@@ -19,13 +19,13 @@ class PlanDeliveryTests(unittest.TestCase):
     def test_plan_pdf_and_actual_email_attachment_are_identical(self):
         server.prepare_plan_delivery(self.sid)
         status,pdf=self.request('/api/plan-pdf',raw=True)
-        self.assertEqual(status,200);self.assertEqual(len(PdfReader(BytesIO(pdf)).pages),18)
+        self.assertEqual(status,200);self.assertEqual(len(PdfReader(BytesIO(pdf)).pages),17)
         _,messages=self.request('/api/inbox');item=next(m for m in messages if m['kind']=='plan')
         status,eml=self.request(item['attachment_preview'],raw=True);self.assertEqual(status,200)
         msg=BytesParser(policy=policy.default).parsebytes(eml)
         attachments=list(msg.iter_attachments());self.assertEqual(len(attachments),1)
         attached=PdfReader(BytesIO(attachments[0].get_payload(decode=True)))
-        self.assertEqual(len(attached.pages),18)
+        self.assertEqual(len(attached.pages),17)
         self.assertEqual(msg['To'],'alex@example.com')
         self.assertEqual(attached.pages[2].extract_text(),PdfReader(BytesIO(pdf)).pages[2].extract_text())
     def test_other_session_cannot_read_email_or_plan(self):

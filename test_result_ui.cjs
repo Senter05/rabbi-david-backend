@@ -14,7 +14,7 @@ function fixture(overrides={}){return {
 function harness(input){
  const root={innerHTML:''};const elements=new Map();const calls=[];let scheduled=0;
  const document={getElementById(id){if(id==='readingRoot')return root;if(!root.innerHTML.includes(`id="${id}"`))return null;if(!elements.has(id))elements.set(id,{listeners:{},addEventListener(type,fn){this.listeners[type]=fn;}});return elements.get(id);},querySelectorAll(){return [];}};
- const context=vm.createContext({document,RabbiAPI:{escape,call:async(endpoint,body)=>{calls.push({endpoint,body});return input;}},URL,clearTimeout(){},setTimeout(){scheduled++;return scheduled;},location:{},console});
+ const context=vm.createContext({document,RabbiAPI:{escape,call:async(endpoint,body)=>{calls.push({endpoint,body});return input;}},URL,clearTimeout(){},setTimeout(){scheduled++;return scheduled;},setInterval(){},clearInterval(){},location:{},console});
  vm.runInContext(source,context);context.input=input;vm.runInContext('state=input;render()',context);
  return {html:root.innerHTML,context,elements,calls,scheduled};
 }
@@ -52,11 +52,9 @@ test('Guided plans can be retried only before progress and outside active prepar
   assert.doesNotMatch(html,/id="retryPlan"/);assert.match(html,/href="\/api\/plan-pdf"/);
  }
 });
-test('Optional welcome stays separate with manual play and no automatic request',()=>{
+test('Optional short welcome is completely eliminated from the page',()=>{
  const result=harness(fixture({intro:{status:'ready',available:true}}));
- assert.match(result.html,/Optional short welcome · ready/);assert.match(result.html,/does not contain the full guidance/);
- assert.match(result.html,/<audio id="welcomeAudio" controls/);assert.doesNotMatch(result.html,/autoplay/);
- assert.equal(result.calls.length,0);
+ assert.doesNotMatch(result.html,/Optional short welcome|welcomeAudio|generateWelcome/);
 });
 test('Details are closed by default, useful next action remains visible, and unsafe text is escaped',()=>{
  const data=fixture();data.reading.first_step.action='<script>bad()</script>';data.answers.name='<img onerror=bad()>';
@@ -74,17 +72,20 @@ test('Not-yet-ready and failed readings never expose premium material',()=>{
   else assert.match(result.html,/id="retryPersonalReading"/);
  }
 });
-test('Missing media state uses a safe preparation action instead of crashing',()=>{
- assert.match(harness(fixture({voice:undefined,intro:undefined})).html,/id="generateVoice"/);
+test('Missing media state safely begins preparation without crashing',()=>{
+ const result=harness(fixture({voice:undefined,intro:undefined}));
+ assert.ok(result.html.includes('audio-progress-wrap')||result.calls.some(c=>c.endpoint==='voice'));
 });
 
-test('Structured teaching renders four labelled blocks with an escaped example and one source',()=>{
+test('Editorial chapter flow renders fluid paragraphs without mechanical labels, preserving source link',()=>{
  const data=fixture();data.reading.sections[0].presentation='guided-four-part-v1';
  data.reading.sections[0].text='A teaching.\n\n<script>unsafe()</script>\n\nOne choice.\n\nWhat could you try?';
  const {html}=harness(data);
- for(const label of ['The teaching','An everyday example','A choice you can try','Pause and reflect'])assert.ok(html.includes(`<h3>${label}</h3>`));
+ for(const label of ['The teaching','An everyday example','A choice you can try','Pause and reflect'])assert.ok(!html.includes(`<h3>${label}</h3>`));
  assert.match(html,/&lt;script&gt;unsafe\(\)&lt;\/script&gt;/);assert.doesNotMatch(html,/<script>/);
  assert.equal((html.match(/Source: <a/g)||[]).length,1);
+ assert.match(html,/class="editorial-divider"/);
+ assert.match(html,/class="editorial-reflection"/);
  assert.doesNotMatch(html,/<details[^>]*\bopen\b/);
 });
 
@@ -96,10 +97,27 @@ test('Legacy text and incomplete excerpts are not assigned invented teaching rol
   assert.doesNotMatch(html,/<h3>The teaching<\/h3>/);
  }
 });
-test('Only an explicit prepare action submits a voice request',async()=>{
+test('Personal tier automatically triggers voice preparation when not requested',async()=>{
  const result=harness(fixture({voice:{status:'not_requested'}}));
- assert.equal(result.calls.length,0);
- result.elements.get('generateVoice').listeners.click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(JSON.parse(JSON.stringify(result.calls)),[{endpoint:'voice',body:{}}]);
+});
+
+test('Voice generation displays animated progress component with 1% to 100% bar',()=>{
+ for(const status of ['queued','submitting','processing','download_pending']){
+  const {html}=harness(fixture({voice:{status}}));
+  assert.match(html,/class="audio-progress-wrap"/);
+  assert.match(html,/class="audio-progress-bar"/);
+  assert.match(html,/class="audio-progress-fill"/);
+  assert.match(html,/Preparing Your Personal Audio with Rabbi David/);
+  assert.doesNotMatch(html,/<audio controls/);
+ }
+});
+
+test('Plan button displays Download 14-Day Plan and opens in a new tab without PDF in label',()=>{
+ const {html}=harness(fixture());
+ assert.match(html,/target="_blank"/);
+ assert.match(html,/rel="noopener"/);
+ assert.match(html,/>Download 14-Day Plan →<\/a>/);
+ assert.doesNotMatch(html,/>Download My 14-Day Plan PDF/);
 });

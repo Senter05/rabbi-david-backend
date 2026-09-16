@@ -23,7 +23,7 @@ QUESTIONS = [
         ('gentle','A gentle pace, with room to pause'),('structure','A clear daily structure'),('flexible','Options I can adapt'),('accountability','A weekly moment to review')]),
     choice('obstacle','What most often makes it difficult to take a small step?','This helps us keep your activities realistic.',[
         ('time','Limited time'),('energy','Limited energy'),('cost','I need no-cost activities'),('unclear','Not knowing where to begin'),('none','Nothing in particular')]),
-    dict(id='note',title='In one everyday moment, what would you like to be different?',hint='Optional. For example: “At dinner, I would like us to listen without interrupting.” Leave out names and private financial details.',type='text',optional=True,maxLength=600),
+    dict(id='note',title='In your own words, what is happening in your life right now that you wish to transform?',hint='The more detail and context you share about your situation, challenges, and goals, the deeper, richer, and more accurate Rabbi David’s personal reading will be for your life. (Optional, but highly recommended).',type='text',optional=True,maxLength=1200),
 ]
 BRANCHES = {
     'calm':[choice('focus','Which concern about money would you most like to reflect on?','Choose the closest fit. No amounts or account details are needed.',[('uncertainty','Living with uncertainty about the future'),('comparison','Comparing what I have with others'),('choices','Making everyday choices with less pressure'),('enough','Knowing what is enough for me'),('exploring','Exploring my relationship with money')])],

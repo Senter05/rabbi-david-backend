@@ -92,28 +92,32 @@
         const tierLabel = isPersonal ? 'Personal Plan & Audio ($32)' : (isReading ? 'Complete Reading ($7)' : 'Free Opening Reflection');
         const statusLabel = isReady ? 'Ready to Open' : (isGenerating ? 'Preparing Reading…' : 'In Progress (Step ' + (r.step || 1) + ')');
 
+        const pdfUrl = r.pdf_url || `/api/pdf?id=${encodeURIComponent(r.id)}`;
+        const planUrl = r.plan_pdf_url || `/api/plan-pdf?id=${encodeURIComponent(r.id)}`;
+        const audioUrl = r.audio_url || (r.has_audio ? `/api/audio?id=${encodeURIComponent(r.id)}` : '');
+
         let actions = '';
         if (isReady) {
-          actions += `<button type="button" data-open-reading="${esc(r.id)}">Open My Reading →</button>`;
-          actions += `<a href="/api/pdf" class="account-action account-secondary" download>Download Reading (PDF)</a>`;
+          actions += `<button type="button" class="account-action account-btn-primary" data-open-reading="${esc(r.id)}">Open My Reading →</button>`;
+          actions += `<a href="${esc(pdfUrl)}" class="account-action account-secondary" download="rabbi-david-reading.pdf">Download Reading (PDF)</a>`;
           if (isPersonal) {
             if (r.has_plan) {
-              actions += `<a href="/api/plan-pdf" class="account-action account-secondary" download>Download 14-Day Plan (PDF)</a>`;
+              actions += `<a href="${esc(planUrl)}" class="account-action account-secondary" download="rabbi-david-14-day-plan.pdf">Download 14-Day Plan (PDF)</a>`;
             }
-            if (r.has_audio && r.audio_url) {
-              actions += `<a href="${esc(r.audio_url)}" class="account-action account-secondary" download>Download Audio (MP3)</a>`;
+            if (r.has_audio && audioUrl) {
+              actions += `<a href="${esc(audioUrl)}" class="account-action account-secondary" download="rabbi-david-personal-audio.mp3">Download Audio (MP3)</a>`;
             }
           }
         } else {
-          actions += `<button type="button" data-open-reading="${esc(r.id)}">${isGenerating ? 'Check Preparation Progress' : 'Continue Test'} →</button>`;
+          actions += `<button type="button" class="account-action account-btn-primary" data-open-reading="${esc(r.id)}">${isGenerating ? 'Check Preparation Progress' : 'Continue Test'} →</button>`;
         }
 
         let audioPlayer = '';
-        if (isPersonal && r.has_audio && r.audio_url) {
+        if (isPersonal && r.has_audio && audioUrl) {
           audioPlayer = `
-            <div style="margin-top:16px;">
-              <p style="font-size:13px;font-weight:600;color:#e2bf61;margin-bottom:6px;">✦ Spoken Audio Reflection</p>
-              <audio controls preload="metadata" src="${esc(r.audio_url)}">Your browser does not support audio playback.</audio>
+            <div class="account-audio-card" style="margin:16px 0;padding:16px;background:#141923;border:1px solid #3d321d;border-radius:10px;">
+              <p style="font-size:13px;font-weight:600;color:#e2bf61;margin:0 0 8px;">✦ Spoken Audio Reflection with Rabbi David</p>
+              <audio controls preload="metadata" src="${esc(audioUrl)}" style="width:100%;height:40px;outline:none;">Your browser does not support audio playback.</audio>
             </div>
           `;
         }
@@ -204,6 +208,11 @@
         status('If this email belongs to an account, recovery instructions have been sent. Check your inbox and spam folder.', false, true);
       });
     });
+
+    $('btnNewReading')?.addEventListener('click', () => action(async () => {
+      await api('new', {});
+      location.href = 'quiz.html';
+    }));
 
     $('signOutBtn').addEventListener('click', () => action(async () => {
       await api('auth/logout', {});

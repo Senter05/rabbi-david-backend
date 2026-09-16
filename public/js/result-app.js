@@ -134,7 +134,21 @@ function personal(){
 }
 function recommendation(){const rec=state.recommendation;if(!rec?.book)return '';const b=rec.book;return `<section class="cross-sell-box"><div class="cross-sell-cover"><img src="${esc(b.cover)}" alt="${esc(b.title)}"></div><div><span class="vessel-tag">A COMPANION TO YOUR READING</span><h2>${esc(b.title)}</h2><p>${esc(rec.reason)}</p><p>${esc(b.author)} · ${b.pages} pages</p><a class="funnel-secondary" href="${esc(b.detailPage||'catalog.html')}">Explore This Book →</a><button class="funnel-secondary" id="alreadyOwn" data-book="${esc(b.id)}">I Already Own This Book</button></div></section>`;}
 function wire(){wireReadingActions();document.getElementById('retryPlan')?.addEventListener('click',()=>act(async()=>{state=await api('plan-retry',{consent:true});render();}));document.querySelectorAll('[data-tier]').forEach(b=>b.addEventListener('click',()=>offer(b.dataset.tier)));document.getElementById('generateVoice')?.addEventListener('click',()=>act(async()=>{state=await api('voice',{});render();}));document.getElementById('alreadyOwn')?.addEventListener('click',e=>act(async()=>{state=await api('owned',{owned:[...state.owned,e.target.dataset.book]});render();}));document.getElementById('contactForm')?.addEventListener('submit',e=>{e.preventDefault();act(async()=>{state=await api('contact',{email:document.getElementById('deliveryEmail').value,marketing:document.getElementById('marketing').checked});say('Your preferences are saved.');});});}
-function offer(tier){const d=document.getElementById('offerDialog');d.innerHTML=`<button id="closeOffer" class="funnel-secondary">Close ✕</button><span class="vessel-tag">LOCAL PREVIEW · NO CHARGE</span><h2>${tier==='reading'?'Your Complete Reading':'Your Personal Path'}</h2><p>${tier==='reading'?'$7 — full written reflection and PDF.':state.tier==='reading'?'$25 upgrade — $32 total, including your existing reading.':'$32 total — reading, personal 14-day plan and audio.'}</p><p>Your answers are already saved. You will not repeat the test. Payments are not connected.</p><button id="confirmOffer" class="btn-unlock">Open This Preview →</button>`;d.showModal();document.getElementById('closeOffer').onclick=()=>d.close();document.getElementById('confirmOffer').onclick=()=>act(async()=>{state=await api('demo-tier',{tier});d.close();render();});}
+function offer(tier){
+ if(state.free_testing){
+  const d=document.getElementById('offerDialog');d.innerHTML=`<button id="closeOffer" class="funnel-secondary">Close ✕</button><span class="vessel-tag">LOCAL PREVIEW · NO CHARGE</span><h2>${tier==='reading'?'Your Complete Reading':'Your Personal Path'}</h2><p>${tier==='reading'?'$7 — full written reflection and PDF.':state.tier==='reading'?'$25 upgrade — $32 total, including your existing reading.':'$32 total — reading, personal 14-day plan and audio.'}</p><p>Your answers are already saved. You will not repeat the test. Payments are not connected.</p><button id="confirmOffer" class="btn-unlock">Open This Preview →</button>`;d.showModal();document.getElementById('closeOffer').onclick=()=>d.close();document.getElementById('confirmOffer').onclick=()=>act(async()=>{state=await api('demo-tier',{tier});d.close();render();});
+ }else{
+  act(async()=>{
+   say('Connecting to secure checkout…');
+   const res=await api('create-checkout-session',{tier});
+   if(res.checkout_url){
+    window.location.href=res.checkout_url;
+   }else{
+    throw new Error('Checkout session could not be created. Please try again.');
+   }
+  });
+ }
+}
 function updateSignature(value){return JSON.stringify([value.generation_progress,value.status,value.revision,value.tier,value.reading,value.plan_status,value.plan_source,value.plan,value.voice?.status,value.voice?.available,value.voice?.error,value.free_testing]);}
 function renderPreserving(){
  const delivery=document.getElementById('delivery');
@@ -154,5 +168,27 @@ function renderPreserving(){
 }
 function poll(){clearTimeout(timer);timer=setTimeout(async()=>{try{const previous=updateSignature(state),next=await api('state');if(busy){poll();return;}const wasGenerating=['queued','submitting','processing','download_pending'].includes(state?.voice?.status)||voiceRequested;const isNowReady=next?.voice?.status==='ready'||next?.voice?.available;if(wasGenerating&&isNowReady){stopAudioProgressTimer();audioProgress=100;updateAudioProgressBar(100);await new Promise(res=>setTimeout(res,500));state=next;renderPreserving();return;}state=next;if(updateSignature(next)!==previous)renderPreserving();else poll();}catch(e){say('Connection interrupted. Your answers are saved. Reconnecting…');poll();}},3000);}
 
-async function openSavedReading(){try{state=await api('state');render();}catch(error){root.innerHTML=`<section class="provisional-reading"><h1 class="result-headline">Your Saved Reading Is Waiting</h1><p role="alert">${esc(error.message)}</p><button class="btn-unlock" id="retryInitialLoad">Try Again</button><p><a href="contact.html">Contact support</a></p></section>`;document.getElementById('retryInitialLoad').addEventListener('click',openSavedReading);}}
+async function openSavedReading(){
+ try{
+  if(typeof window!=='undefined'&&window.location?.search){
+   const urlParams=new URLSearchParams(window.location.search);
+   const checkoutSessionId=urlParams.get('checkout_session_id');
+   if(checkoutSessionId){
+    try{
+     const verifyResp=await fetch(`/api/checkout-verify?checkout_session_id=${encodeURIComponent(checkoutSessionId)}`,{
+      headers:{'X-Requested-With':'RabbiDavid'}
+     });
+     if(verifyResp.ok){
+      const vData=await verifyResp.json();
+      if(vData.unlocked){
+       window.history.replaceState({},document.title,window.location.pathname);
+      }
+     }
+    }catch(e){console.warn('Verification check:',e);}
+   }
+  }
+  state=await api('state');
+  render();
+ }catch(error){root.innerHTML=`<section class="provisional-reading"><h1 class="result-headline">Your Saved Reading Is Waiting</h1><p role="alert">${esc(error.message)}</p><button class="btn-unlock" id="retryInitialLoad">Try Again</button><p><a href="contact.html">Contact support</a></p></section>`;document.getElementById('retryInitialLoad').addEventListener('click',openSavedReading);}
+}
 openSavedReading();

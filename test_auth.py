@@ -312,5 +312,47 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(readings[0]['id'], 's2_remote')
             self.assertEqual(readings[1]['id'], 's1_remote')
 
+    def test_apply_tier_purchase_different_email(self):
+        client = self.new_client()
+        reg_email = 'student1@example.com'
+        self.req('/api/enroll', {'name': 'Student', 'email': reg_email, 'password': 'Password123'}, client=client)
+        code, state = self.req('/api/state', client=client)
+        sid = None
+        for cookie in client.cookiejar:
+            if cookie.name == 'rd_session': sid = cookie.value
+        self.assertIsNotNone(sid)
+        user = server.get_user_by_email(reg_email)
+        self.assertIsNotNone(user)
+
+        buyer_email = 'buyer_different@company.com'
+        order_id = 'ord_stripe_diff_email_999'
+        res = server.apply_tier_purchase(
+            order_id=order_id,
+            session_id='cs_stripe_diff_session_123',
+            buyer_email=buyer_email,
+            name='Buyer Different',
+            raw_tier='personal',
+            amount=3200,
+            currency='usd',
+            metadata={
+                'session_id': sid,
+                'user_id': user['id'],
+                'registered_email': reg_email,
+                'tier': 'personal'
+            }
+        )
+        self.assertTrue(res['ok'])
+        self.assertEqual(res['tier'], 'personal')
+
+        code, updated_state = self.req('/api/state', client=client)
+        self.assertEqual(updated_state['tier'], 'personal')
+        self.assertTrue(updated_state.get('paid'))
+        self.assertEqual(updated_state.get('billing_email'), buyer_email)
+
+        code_v, res_v = self.req('/api/checkout-verify?checkout_session_id=cs_stripe_diff_session_123', client=client)
+        self.assertEqual(code_v, 200)
+        self.assertTrue(res_v['unlocked'])
+        self.assertEqual(res_v['tier'], 'personal')
+
 if __name__ == '__main__':
     unittest.main()

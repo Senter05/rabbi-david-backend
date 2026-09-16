@@ -200,9 +200,11 @@ def get_user_readings_list(user_id):
                 'tier':d.get('tier','free'),
                 'updated':r['updated'],
                 'has_audio':bool(d.get('audio_file') and d.get('voice',{}).get('status')=='ready'),
-                'audio_url':'/api/audio' if (d.get('audio_file') and d.get('voice',{}).get('status')=='ready') else None,
+                'audio_url':f"/api/audio?id={r['id']}" if (d.get('audio_file') and d.get('voice',{}).get('status')=='ready') else None,
                 'has_plan':bool(d.get('plan') and d.get('tier')=='personal'),
+                'plan_pdf_url':f"/api/plan-pdf?id={r['id']}" if (d.get('plan') and d.get('tier')=='personal') else None,
                 'has_pdf':bool(d.get('status')=='ready'),
+                'pdf_url':f"/api/pdf?id={r['id']}",
                 'step':d.get('step',0),
                 'completed_days':d.get('completed_days',[])
             })
@@ -402,6 +404,69 @@ def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, curre
         try:POOL.submit(lambda: SUPABASE.upsert_order({'id':order_id,'session_id':session_id,'email':email,'book_id':book_id,'amount':amount,'currency':currency,'delivery_status':status,'provider_id':provider_id,'user_id':uid,'created':time.time()}))
         except Exception as ex:print(f"[SUPABASE EBOOK ORDER SYNC ERROR] {ex}",flush=True)
     return {'ok': True, 'status': status, 'provider_id': provider_id, 'book_id': book_id}
+
+def apply_tier_purchase(order_id, session_id, buyer_email, name, raw_tier, amount=0, currency='usd', metadata=None):
+    metadata = metadata or {}
+    effective_tier = 'personal' if raw_tier in ('personal', 'upgrade') else 'reading'
+    target_sid = metadata.get('session_id') or session_id or ''
+    target_uid = metadata.get('user_id') or ''
+    registered_email = metadata.get('registered_email') or metadata.get('email') or ''
+    resolved_sid = None
+    if target_sid:
+        with connection() as con:
+            row = con.execute("SELECT id FROM sessions WHERE id=?", (target_sid,)).fetchone()
+            if row: resolved_sid = row['id']
+    resolved_uid = target_uid
+    if not resolved_uid and registered_email:
+        u = get_user_by_email(registered_email)
+        if u: resolved_uid = u['id']
+    if not resolved_uid and buyer_email:
+        u = get_user_by_email(buyer_email)
+        if u: resolved_uid = u['id']
+    if not resolved_sid and resolved_uid:
+        with connection() as con:
+            row = con.execute("SELECT id FROM sessions WHERE user_id=? ORDER BY updated DESC LIMIT 1", (resolved_uid,)).fetchone()
+            if row: resolved_sid = row['id']
+    if resolved_sid:
+        def set_tier(d):
+            d['tier'] = effective_tier
+            d['paid'] = True
+            if buyer_email: d['billing_email'] = buyer_email
+            if resolved_uid and not d.get('user_id'): d['user_id'] = resolved_uid
+            if effective_tier == 'personal':
+                d['auto_audio'] = True
+                if not d.get('plan'):
+                    d['plan_status'] = 'preparing'
+        d_updated = update(resolved_sid, set_tier)
+        if effective_tier == 'personal':
+            if not d_updated.get('plan'):
+                schedule(plan_job, resolved_sid, d_updated['revision'])
+            else:
+                try: prepare_plan_delivery(resolved_sid)
+                except Exception as ex: print(f"[PLAN DELIVERY ON PURCHASE ERROR] {ex}", flush=True)
+                schedule(voice_job, resolved_sid)
+    status = 'delivered'
+    with connection() as con:
+        con.execute(
+            "INSERT OR REPLACE INTO orders(id,session_id,email,book_id,amount,currency,created,delivery_status,provider_id,user_id) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (order_id, resolved_sid or target_sid, buyer_email or registered_email, 'tier:'+effective_tier, amount, currency, time.time(), status, session_id, resolved_uid)
+        )
+    if SUPABASE and SUPABASE.is_configured():
+        try:
+            POOL.submit(lambda: SUPABASE.upsert_order({
+                'id': order_id,
+                'session_id': resolved_sid or target_sid,
+                'email': buyer_email or registered_email,
+                'book_id': 'tier:'+effective_tier,
+                'amount': amount,
+                'currency': currency,
+                'delivery_status': status,
+                'provider_id': session_id,
+                'user_id': resolved_uid,
+                'created': time.time()
+            }))
+        except Exception as ex: print(f"[SUPABASE TIER ORDER SYNC ERROR] {ex}", flush=True)
+    return {'ok': True, 'tier': effective_tier, 'session_id': resolved_sid, 'user_id': resolved_uid}
 
 def valid_answers(raw,complete=False,followup=None,unchanged=None):
     if not isinstance(raw,dict):raise ValueError('Please check your answers')
@@ -803,8 +868,12 @@ class Handler(BaseHTTPRequestHandler):
                     if item['kind']=='plan' and (DATA/'outbox'/(item['id']+'.eml')).is_file():item['attachment_preview']='/api/plan-email?id='+item['id']
                 return self.send(obj=items)
             if path=='/api/plan-pdf':
-                d=get(sid);curr=self.current_user()
-                if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
+                target_id=urllib.parse.parse_qs(u.query).get('id',[''])[0] or sid
+                d=get(target_id);curr=self.current_user()
+                is_owner=(target_id==sid) or (curr and d.get('user_id')==curr['id']) or (curr and curr.get('email') and d.get('email')==curr.get('email'))
+                if not is_owner:return self.send(403,{'error':'Unauthorized access to this reading'})
+                if curr and not d.get('user_id') and d.get('email')==curr.get('email'):
+                    update(target_id,lambda x:x.update(user_id=curr['id']))
                 if d['tier']!='personal':return self.send(403,{'error':'Your personal plan is required'})
                 if d['status']!='ready' or not d.get('plan'):return self.send(409,{'error':'Your plan is still being prepared'})
                 return self.send(body=plan_pdf(d),mime='application/pdf',headers={'Content-Disposition':'inline; filename="your-personal-14-day-plan.pdf"'})
@@ -816,14 +885,22 @@ class Handler(BaseHTTPRequestHandler):
                 if not file.is_file():return self.send(404,{'error':'Email preview is not ready'})
                 return self.send(body=file.read_bytes(),mime='message/rfc822',headers={'Content-Disposition':'attachment; filename="your-plan-email.eml"'})
             if path=='/api/pdf':
-                d=get(sid);curr=self.current_user()
-                if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
+                target_id=urllib.parse.parse_qs(u.query).get('id',[''])[0] or sid
+                d=get(target_id);curr=self.current_user()
+                is_owner=(target_id==sid) or (curr and d.get('user_id')==curr['id']) or (curr and curr.get('email') and d.get('email')==curr.get('email'))
+                if not is_owner:return self.send(403,{'error':'Unauthorized access to this reading'})
+                if curr and not d.get('user_id') and d.get('email')==curr.get('email'):
+                    update(target_id,lambda x:x.update(user_id=curr['id']))
                 if d['status']!='ready':return self.send(409,{'error':'Your reading is not ready yet'})
                 return self.send(body=reading_pdf(d),mime='application/pdf',headers={'Content-Disposition':'attachment; filename="your-rabbi-david-reading.pdf"'})
             if path=='/api/audio':
-                d=get(sid);curr=self.current_user()
-                if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
-                if not d.get('audio_file') or d['voice']['status']!='ready':return self.send(404,{'error':'Audio is not ready'})
+                target_id=urllib.parse.parse_qs(u.query).get('id',[''])[0] or sid
+                d=get(target_id);curr=self.current_user()
+                is_owner=(target_id==sid) or (curr and d.get('user_id')==curr['id']) or (curr and curr.get('email') and d.get('email')==curr.get('email'))
+                if not is_owner:return self.send(403,{'error':'Unauthorized access to this reading'})
+                if curr and not d.get('user_id') and d.get('email')==curr.get('email'):
+                    update(target_id,lambda x:x.update(user_id=curr['id']))
+                if not d.get('audio_file') or d.get('voice',{}).get('status')!='ready':return self.send(404,{'error':'Audio is not ready'})
                 target=DATA/'audio'/d['audio_file']
                 if not target.is_file() and SUPABASE and SUPABASE.is_configured():
                     SUPABASE.download_asset('user-assets', f"audio/{d['audio_file']}", target)
@@ -839,8 +916,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not target.is_file():return self.send(404,{'error':'Welcome file could not be retrieved'})
                 return self.send_file(target,mime='audio/mpeg',private=True)
             if path=='/api/transcript':
-                d=get(sid);curr=self.current_user()
+                target_id=urllib.parse.parse_qs(u.query).get('id',[''])[0] or sid
+                d=get(target_id);curr=self.current_user()
                 if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
+                if not d.get('user_id') and target_id!=sid:return self.send(403,{'error':'Unauthorized access to this reading'})
                 if d['tier']!='personal':return self.send(403,{'error':'Personal plan required'})
                 return self.send(body=d['voice'].get('script','Audio has not been requested.').encode(),mime='text/plain; charset=utf-8')
             if path=='/access':
@@ -853,8 +932,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.new_cookie=r['sid'];return self.send(303,body=b'',headers={'Location':'/result.html'})
             if path=='/api/download-verify':
                 return self.handle_download_verify(u)
+            if path=='/api/checkout-verify':
+                return self.handle_checkout_verify(u)
             if path=='/api/new':
-                self.new_cookie=new_session();return self.send(obj=safe_state(get(self.new_cookie)))
+                self.new_cookie=new_session()
+                curr=self.current_user()
+                if curr:
+                    def init_user_session(x):
+                        x.update(user_id=curr['id'],email=curr['email'],started=True)
+                        x['answers']['name']=curr.get('name') or 'Friend'
+                    update(self.new_cookie,init_user_session)
+                    link_user_sessions(curr['id'],curr['email'],self.new_cookie)
+                return self.send(obj=safe_state(get(self.new_cookie)))
             if path.startswith('/api/'):return self.send(404,{'error':'Not found'})
             if path=='/':path='/index.html'
             f=(ROOT/'public'/urllib.parse.unquote(path.lstrip('/'))).resolve()
@@ -875,11 +964,14 @@ class Handler(BaseHTTPRequestHandler):
                 name=customer_details.get('name') or 'Valued Reader'
                 metadata=session.get('metadata') or {}
                 book_id=metadata.get('book_id','')
+                tier=metadata.get('tier','')
                 amount=session.get('amount_total',0)
                 currency=session.get('currency','usd')
                 order_id='ord_'+(session_id if session_id else hashlib.sha256(raw).hexdigest()[:16])
-                if email:
+                if book_id and email:
                     deliver_ebook(order_id,email,name,book_id,session_id=session_id,amount=amount,currency=currency)
+                elif tier:
+                    apply_tier_purchase(order_id,session_id,email,name,tier,amount=amount,currency=currency,metadata=metadata)
             return self.send(200,{'received':True})
         except Exception as e:
             print(f"[STRIPE WEBHOOK ERROR] {e}",flush=True)
@@ -893,6 +985,38 @@ class Handler(BaseHTTPRequestHandler):
         if order:
             return self.send(200,{'verified':True,'email':order['email'],'book_id':order['book_id'],'delivery_status':order['delivery_status']})
         return self.send(200,{'verified':False,'status':'processing'})
+    def handle_checkout_verify(self,u):
+        qs=urllib.parse.parse_qs(u.query)
+        checkout_id=qs.get('checkout_session_id',[''])[0]
+        sid=self.session()
+        d=get(sid)
+        if d.get('tier') in ('reading','personal'):
+            return self.send(200,{'unlocked':True,'tier':d['tier']})
+        if not checkout_id:
+            return self.send(200,{'unlocked':False,'tier':d.get('tier','free')})
+        with connection() as con:
+            order=con.execute("SELECT * FROM orders WHERE provider_id=?",(checkout_id,)).fetchone()
+        if order:
+            tier=order['book_id'].replace('tier:','') if order['book_id'].startswith('tier:') else 'personal'
+            update(sid,lambda x:x.update(tier=tier,paid=True))
+            return self.send(200,{'unlocked':True,'tier':tier})
+        stripe_key=os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
+        if stripe_key and re.fullmatch(r'cs_[A-Za-z0-9_]+',checkout_id):
+            try:
+                req=urllib.request.Request(f'https://api.stripe.com/v1/checkout/sessions/{checkout_id}',headers={'Authorization':f'Bearer {stripe_key}'})
+                with urllib.request.urlopen(req,timeout=15) as r:
+                    cs=json.loads(r.read())
+                if cs.get('payment_status')=='paid':
+                    meta=cs.get('metadata') or {}
+                    raw_tier=meta.get('tier','personal')
+                    cust=cs.get('customer_details') or {}
+                    buyer_email=cust.get('email') or cs.get('customer_email') or ''
+                    order_id='ord_'+checkout_id
+                    apply_tier_purchase(order_id,checkout_id,buyer_email,cust.get('name') or '',raw_tier,amount=cs.get('amount_total',0),currency=cs.get('currency','usd'),metadata=meta)
+                    return self.send(200,{'unlocked':True,'tier':'personal' if raw_tier in ('personal','upgrade') else 'reading'})
+            except Exception as ex:
+                print(f"[CHECKOUT VERIFY ERROR] {ex}",flush=True)
+        return self.send(200,{'unlocked':False,'status':'pending'})
     def do_POST(self):
         path=urllib.parse.urlsplit(self.path).path
         if path=='/api/stripe-webhook':
@@ -1023,6 +1147,39 @@ class Handler(BaseHTTPRequestHandler):
                     if current['tier']=='personal':raise ValueError('Your personal plan already includes the full reading')
                     d=update(sid,upgrade);sync_delivery(sid);event(sid,'preview_'+tier)
                     if tier=='personal' and d.get('plan_status')=='preparing':schedule(plan_job,sid,d['revision'])
+            elif path=='/api/create-checkout-session':
+                tier=body.get('tier')
+                if tier not in ['reading','personal','upgrade']:raise ValueError('Invalid tier')
+                stripe_key=os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
+                if not stripe_key:raise ValueError('Stripe is not configured')
+                amounts={'reading':100,'personal':100,'upgrade':100}
+                names={'reading':'The Complete Reading — Rabbi David','personal':'The Personal Path (Reading, 14-Day Plan & Audio) — Rabbi David','upgrade':'Personal Path Upgrade (14-Day Plan & Audio) — Rabbi David'}
+                unit_amount=amounts.get(tier,100)
+                prod_name=names.get(tier,names['personal'])
+                success_url=f"{public_origin()}/result.html?checkout_session_id={{CHECKOUT_SESSION_ID}}&paid=true"
+                cancel_url=f"{public_origin()}/result.html"
+                user_email=d.get('email') or (self.current_user() or {}).get('email') or ''
+                user_id=d.get('user_id') or (self.current_user() or {}).get('id') or ''
+                params={
+                    'payment_method_types[]':'card',
+                    'mode':'payment',
+                    'success_url':success_url,
+                    'cancel_url':cancel_url,
+                    'line_items[0][price_data][currency]':'usd',
+                    'line_items[0][price_data][unit_amount]':str(unit_amount),
+                    'line_items[0][price_data][product_data][name]':prod_name,
+                    'line_items[0][quantity]':'1',
+                    'metadata[session_id]':sid,
+                    'metadata[user_id]':user_id,
+                    'metadata[registered_email]':user_email,
+                    'metadata[tier]':tier
+                }
+                if user_email:params['customer_email']=user_email
+                data=urllib.parse.urlencode(params).encode('utf-8')
+                req=urllib.request.Request('https://api.stripe.com/v1/checkout/sessions',data=data,headers={'Authorization':f'Bearer {stripe_key}'})
+                with urllib.request.urlopen(req,timeout=15) as r:
+                    cs_data=json.loads(r.read())
+                return self.send(200,{'ok':True,'checkout_url':cs_data.get('url'),'session_id':cs_data.get('id')})
             elif path=='/api/plan-retry':
                 if body.get('consent') is not True:raise ValueError('Please confirm preparation of your detailed plan.')
                 if not AI_ENABLED:raise ValueError('Personal plan generation is not connected.')

@@ -121,3 +121,13 @@ test('Plan button displays Download 14-Day Plan and opens in a new tab without P
  assert.match(html,/>Download 14-Day Plan →<\/a>/);
  assert.doesNotMatch(html,/>Download My 14-Day Plan PDF/);
 });
+
+test('Recommended $27 package precedes the $7 alternative and retains both explanations',()=>{
+ const {html}=harness(fixture({tier:'free',plan:null}));
+ assert.ok(html.indexOf('data-tier="personal"')<html.indexOf('data-tier="reading"'));
+ assert.match(html,/recommended-badge">Recommended/);
+ assert.match(html,/What makes the 14-day plan specific to me/);
+ assert.match(html,/What will my personal audio include/);
+ assert.doesNotMatch(html,/Most popular|Best seller/);
+ assert.match(html,/Explore the Book Library/);
+});

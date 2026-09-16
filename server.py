@@ -1143,9 +1143,9 @@ class Handler(BaseHTTPRequestHandler):
                 if tier not in ['reading','personal','upgrade']:raise ValueError('Invalid tier')
                 stripe_key=os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
                 if not stripe_key:raise ValueError('Stripe is not configured')
-                amounts={'reading':100,'personal':100,'upgrade':100}
+                amounts={'reading':700,'personal':2700,'upgrade':2000}
                 names={'reading':'The Complete Reading — Rabbi David','personal':'The Personal Path (Reading, 14-Day Plan & Audio) — Rabbi David','upgrade':'Personal Path Upgrade (14-Day Plan & Audio) — Rabbi David'}
-                unit_amount=amounts.get(tier,100)
+                unit_amount=amounts.get(tier,2700)
                 prod_name=names.get(tier,names['personal'])
                 success_url=f"{public_origin()}/result.html?checkout_session_id={{CHECKOUT_SESSION_ID}}&paid=true"
                 cancel_url=f"{public_origin()}/result.html"

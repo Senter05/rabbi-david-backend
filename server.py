@@ -308,8 +308,8 @@ def prepare_plan_delivery(sid):
     mid=hashlib.sha256(f'{sid}:{d["revision"]}:plan'.encode()).hexdigest()
     message=EmailMessage()
     message['To']=d['email']
-    message['Subject']='Rabbi David | Your 14-day plan PDF is ready'
-    message.set_content(f"Shalom {d['answers']['name']},\n\nYour personal 14-day plan is attached as a PDF. Start with Day 1, at a pace that feels manageable.\n\nTo return to your reading and personal audio, sign in here:\n\n{public_origin()}/account.html\n\nWith warmth,\nThe Rabbi David Team")
+    message['Subject']='Rabbi David | Your personal 14-day plan and audio are ready'
+    message.set_content(f"Shalom {d['answers']['name']},\n\nYour personal 14-day plan is attached as a PDF.\n\nYour personal audio reading is also ready to listen to directly in your account:\n\n{public_origin()}/result.html\n\nOr sign in anytime here:\n\n{public_origin()}/account.html\n\nMay peace and blessing rest upon the work of your hands.\n\nWith warmth,\nRabbi David & Team")
     add_email_html(message,'plan',public_origin())
     message.add_attachment(pdf,maintype='application',subtype='pdf',filename='your-personal-14-day-plan.pdf')
     directory=DATA/'outbox';directory.mkdir(exist_ok=True)

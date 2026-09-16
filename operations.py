@@ -17,7 +17,7 @@ class BoundedExecutor:
         return future
 
 def origins(config,port):
-    raw=os.environ.get('PUBLIC_ORIGIN') or config.get('public_origin','')
+    raw=os.environ.get('PUBLIC_ORIGIN') or config.get('public_origin') or 'https://rabbidavid.org'
     extra=os.environ.get('ALLOWED_ORIGINS','').split(',')
     values={f'http://localhost:{port}',f'http://127.0.0.1:{port}'}
     for item in [raw,*extra]:

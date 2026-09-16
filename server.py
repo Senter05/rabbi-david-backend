@@ -120,7 +120,7 @@ def sync_delivery(sid):
     step=view.get('first_step')
     if step:parts.extend(['Your first practical step',step['action'],step['why'],step['reflection']])
     for section in view['sections']:parts.extend([section['title'],section['text']])
-    if d['tier']=='free':parts.append('This is your free opening reflection, approximately 40% of your reading. Your saved personal space explains the complete reading and optional plan.')
+    if d['tier']=='free':parts.append('Your complete written reading is free to keep. Save your PDF in your personal space. An optional personalized 14-day plan and audio are offered at USD $27, one-time; books are separate.')
     parts.append('Return with your private recovery key or request an email access link from the website. No purchase was made in this preview.'+('' if mail_configured() else ' Delivery status is shown in your saved reading.'))
     mail(sid,'reading_'+d['tier'],'Your Rabbi David reading is ready','\n\n'.join(p for p in parts if p))
     if d['marketing']:

@@ -13,6 +13,9 @@ from providers import generate_reading,generate_plan,generate_followup,submit_vo
 from documents import reading_pdf,plan_pdf
 from source_library import SOURCE_BY_ID
 from email.message import EmailMessage
+from email import policy
+from email.utils import parseaddr
+import mail_delivery
 
 ROOT=Path(__file__).resolve().parent
 LOCK=threading.RLock();POOL=BoundedExecutor();STOP=threading.Event()
@@ -37,6 +40,8 @@ CREATE TABLE IF NOT EXISTS access(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expir
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,sid TEXT,event TEXT,created REAL);''')
         columns={r[1] for r in con.execute('PRAGMA table_info(mail)')}
         if 'delivery_status' not in columns:con.execute("ALTER TABLE mail ADD COLUMN delivery_status TEXT NOT NULL DEFAULT 'local'")
+        for field in ['delivery_error','provider_message_id']:
+            if field not in columns:con.execute('ALTER TABLE mail ADD COLUMN '+field+' TEXT')
         con.execute("UPDATE mail SET delivery_status='needs_review' WHERE delivery_status='sending'")
         con.execute('CREATE TABLE IF NOT EXISTS recovery_keys(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL)')
         # A restarted worker must not pretend that an interrupted task completed.
@@ -183,7 +188,7 @@ def safe_state(d):
     s.pop('intro_file',None)
     s.pop('audio_file',None);s.pop('usage',None)
     s.pop('reading_diagnostic',None);s.pop('plan_diagnostic',None)
-    s['email_delivery_enabled']=bool(CONFIG.get('smtp_host') and CONFIG.get('mail_from'))
+    s['email_delivery_enabled']=mail_configured()
     if d['status']=='ready':
         owned_items=set(d['owned'])
         for owned_book in CATALOG:
@@ -390,12 +395,11 @@ def process_voice(sid,field):
         update(sid,lambda x:x[field].update(poll_errors=count,next_poll_at=now+min(300,8*2**min(count,6))))
         event(sid,'voice_poll_error:'+field)
 
-def mail_configured():return bool(CONFIG.get('smtp_host') and CONFIG.get('mail_from'))
+def mail_configured():return mail_delivery.transport(CONFIG)!='local'
 
 def dispatch_mail_once():
     if not mail_configured():return
     from email.parser import BytesParser
-    import smtplib,ssl
     with LOCK:
         with connection() as con:
             row=con.execute("SELECT * FROM mail WHERE due<=? AND delivery_status='pending' ORDER BY created LIMIT 1",(time.time(),)).fetchone()
@@ -403,17 +407,21 @@ def dispatch_mail_once():
             con.execute("UPDATE mail SET delivery_status='sending' WHERE id=?",(row['id'],))
     try:
         attachment=DATA/'outbox'/(row['id']+'.eml')
-        message=BytesParser().parsebytes(attachment.read_bytes()) if row['kind']=='plan' and attachment.is_file() else EmailMessage()
+        if row['kind']=='plan' and not attachment.is_file():
+            raise mail_delivery.MailDeliveryError('plan_attachment_missing')
+        message=BytesParser(policy=policy.default).parsebytes(attachment.read_bytes()) if row['kind']=='plan' else EmailMessage()
         if not message.get('To'):
             message['To']=row['recipient'];message['Subject']=row['subject'];message.set_content(row['body'])
-        message['From']=CONFIG['mail_from'];message['Message-ID']='<'+row['id']+'@'+CONFIG['mail_from'].split('@')[-1]+'>'
-        with smtplib.SMTP(CONFIG['smtp_host'],int(CONFIG.get('smtp_port',587)),timeout=20) as client:
-            client.starttls(context=ssl.create_default_context())
-            if CONFIG.get('smtp_username'):client.login(CONFIG['smtp_username'],CONFIG.get('smtp_password',''))
-            client.send_message(message)
-        status='sent'
-    except Exception:status='needs_review'
-    with connection() as con:con.execute('UPDATE mail SET delivery_status=? WHERE id=?',(status,row['id']))
+        # Use the current recipient even when a saved MIME attachment is older.
+        if message.get('To'):message.replace_header('To',row['recipient'])
+        message['From']=CONFIG['mail_from'];message['Message-ID']='<'+row['id']+'@'+parseaddr(CONFIG['mail_from'])[1].split('@')[-1]+'>'
+        provider_id=mail_delivery.send(CONFIG,message,row['id'])
+        status='sent';error=None
+    except Exception as exc:
+        status='needs_review';provider_id=None
+        error=str(exc) if isinstance(exc,mail_delivery.MailDeliveryError) else 'mail_preparation_failed'
+        print(f"[MAIL ERROR] reference={row['id'][:8]} reason={error}",flush=True)
+    with connection() as con:con.execute('UPDATE mail SET delivery_status=?,delivery_error=?,provider_message_id=? WHERE id=?',(status,error,provider_id,row['id']))
 
 
 def poll_voices():
@@ -499,11 +507,11 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/state':return self.send(obj=safe_state(get(sid)))
             if path=='/api/catalog':return self.send(obj=[b for b in CATALOG if b.get('active',True)])
             if path=='/api/practices':return self.send(obj=PRACTICES)
-            if path=='/api/config':return self.send(obj=dict(version=VERSION,model=CONFIG.get('openrouter_model',''),mode='preview',payments=False,email='smtp' if mail_configured() else 'local',support='email' if mail_configured() and CONFIG.get('support_email') else 'local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
+            if path=='/api/config':return self.send(obj=dict(version=VERSION,model=CONFIG.get('openrouter_model',''),mode='preview',payments=False,email=mail_delivery.transport(CONFIG),support='email' if mail_configured() and CONFIG.get('support_email') else 'local',ai=AI_ENABLED,voice=VOICE_ENABLED,free_testing=CONFIG.get('free_testing') is True))
             if path=='/api/export':
                 return self.send(obj=safe_state(get(sid)),headers={'Content-Disposition':'attachment; filename="my-reading-data.json"'})
             if path=='/api/inbox':
-                with connection() as con:rows=con.execute('SELECT id,recipient,subject,body,due,kind,delivery_status FROM mail WHERE sid=? ORDER BY created DESC',(sid,)).fetchall()
+                with connection() as con:rows=con.execute('SELECT id,recipient,subject,body,due,kind,delivery_status,delivery_error,provider_message_id FROM mail WHERE sid=? ORDER BY created DESC',(sid,)).fetchall()
                 items=[dict(r) for r in rows]
                 for item in items:
                     if item['kind']=='plan' and (DATA/'outbox'/(item['id']+'.eml')).is_file():item['attachment_preview']='/api/plan-email?id='+item['id']
@@ -772,7 +780,7 @@ def main():
         config['ai33_voice_id']=os.environ['AI33_VOICE_ID']
     AI_ENABLED=not args.offline
     VOICE_ENABLED=args.enable_voice
-    for field in ['smtp_host','smtp_port','smtp_username','smtp_password','mail_from','support_email']:
+    for field in ['resend_api_key','smtp_host','smtp_port','smtp_username','smtp_password','mail_from','support_email']:
         if os.environ.get(field.upper()):config[field]=os.environ[field.upper()]
     if config.get('smtp_password'):
         config.setdefault('smtp_host','smtp.resend.com')

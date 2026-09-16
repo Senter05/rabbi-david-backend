@@ -3,6 +3,7 @@
   "free_testing": false,
   "support_email": "",
   "mail_from": "",
+  "resend_api_key": "",
   "smtp_host": "",
   "smtp_port": 587,
   "retention_days": 90,

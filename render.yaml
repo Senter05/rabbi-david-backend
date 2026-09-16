@@ -21,6 +21,8 @@ services:
       - key: FREE_TESTING
         value: "false"
       - key: SMTP_HOST
+        # Existing Resend SMTP credentials are automatically used over HTTPS.
+        # RESEND_API_KEY, when set in Render, takes precedence over SMTP_PASSWORD.
         value: "smtp.resend.com"
       - key: SMTP_PORT
         value: "587"

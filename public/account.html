@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>My Account · Rabbi David</title>
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/policies.css">
+  <link rel="stylesheet" href="css/account.css">
+  <script src="js/api-client.js" defer></script>
+  <script src="js/account.js" defer></script>
+</head>
+<body class="policy-page">
+  <header class="policy-header">
+    <a href="index.html">✡ RABBI DAVID</a>
+    <div style="display:flex;gap:16px;align-items:center;">
+      <a href="catalog.html">Books</a>
+      <a href="quiz.html" style="color:#e2bf61;font-weight:600;">Start Test →</a>
+    </div>
+  </header>
+
+  <main class="policy-main account-main">
+    <p class="policy-eyebrow">Your Personal Space</p>
+    <h1 id="accountTitle">Welcome to Rabbi David</h1>
+    <p id="accountIntro">Sign in to continue your test, reopen your saved reflections, listen to your audio and download your personal PDF.</p>
+
+    <div id="accountStatus" role="status" aria-live="polite">Checking your account…</div>
+
+    <!-- AUTH FORMS SECTION -->
+    <section id="accountForms" hidden>
+      <div class="account-tabs">
+        <button type="button" class="account-tab-btn active" id="tabLoginBtn">Sign In</button>
+        <button type="button" class="account-tab-btn" id="tabRegisterBtn">Create Account</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form id="loginForm">
+        <label for="loginEmail">Account Email</label>
+        <input id="loginEmail" type="email" name="email" autocomplete="username" maxlength="254" required placeholder="you@example.com">
+        
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" name="password" autocomplete="current-password" maxlength="128" required placeholder="Your password">
+        
+        <button type="submit" id="loginSubmitBtn">Sign In to My Account →</button>
+      </form>
+
+      <!-- REGISTER FORM -->
+      <form id="registerForm" hidden>
+        <label for="regName">Your First Name</label>
+        <input id="regName" type="text" name="name" autocomplete="given-name" maxlength="60" required placeholder="Your first name">
+
+        <label for="regEmail">Your Email</label>
+        <input id="regEmail" type="email" name="email" autocomplete="email" maxlength="254" required placeholder="you@example.com">
+
+        <label for="regPassword">Create Password <span>(at least 8 characters)</span></label>
+        <input id="regPassword" type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" required placeholder="Min. 8 characters">
+
+        <button type="submit" id="regSubmitBtn">Create Account & Start →</button>
+      </form>
+
+      <!-- RESET PASSWORD REQUEST -->
+      <details id="resetDetails">
+        <summary>Forgot your password?</summary>
+        <form id="resetRequestForm">
+          <label for="resetEmail">Enter your account email</label>
+          <input id="resetEmail" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com">
+          <button type="submit">Send Recovery Instructions</button>
+        </form>
+      </details>
+
+      <p style="margin-top:24px;color:#a49984;">
+        Taking the test for the first time? <a href="quiz.html" style="color:#e2bf61;font-weight:600;">Begin your personal test directly →</a>
+      </p>
+    </section>
+
+    <!-- RESET PASSWORD CONFIRM FORM (SHOWN WHEN ?reset_token=... IS IN URL) -->
+    <section id="resetConfirmSection" hidden>
+      <h2>Set a New Password</h2>
+      <p>Enter your new password below to regain access to your account.</p>
+      <form id="resetConfirmForm">
+        <label for="newPassword">New Password <span>(at least 8 characters)</span></label>
+        <input id="newPassword" type="password" minlength="8" maxlength="128" required placeholder="Min. 8 characters">
+        <button type="submit">Update Password & Sign In →</button>
+      </form>
+    </section>
+
+    <!-- USER DASHBOARD SECTION -->
+    <section id="accountDashboard" hidden>
+      <div class="account-heading">
+        <h2 id="userGreeting" style="margin:0;">Your Personal Space</h2>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <a href="quiz.html" class="account-action" style="padding:10px 16px;font-size:14px;min-height:auto;">+ New Reading</a>
+          <button id="signOutBtn" type="button" class="account-secondary" style="padding:10px 16px;font-size:14px;min-height:auto;">Sign Out</button>
+        </div>
+      </div>
+
+      <div class="account-badge-row">
+        <span class="account-badge" id="dashUserEmail"></span>
+        <span class="account-badge badge-green" id="dashVerifiedBadge">Verified Reader</span>
+      </div>
+
+      <div id="accountReadings">
+        <!-- Injected by account.js -->
+      </div>
+
+      <div id="accountOrdersWrap" style="margin-top:40px;" hidden>
+        <h3 style="border-top:1px solid #332815;padding-top:24px;margin-bottom:16px;">Your Purchased Books</h3>
+        <div id="accountOrdersList"></div>
+      </div>
+
+      <p style="margin-top:32px;font-size:14px;color:#857967;">
+        Your reflections, downloads and purchases are securely tied to this account. Signing out keeps them safe.
+      </p>
+    </section>
+
+    <footer style="margin-top:60px;padding-top:20px;border-top:1px solid #231c10;color:#706655;font-size:14px;">
+      <a href="help.html" style="color:#a49984;">Need help?</a> · 
+      <a href="privacy.html" style="color:#a49984;">Privacy Policy</a> · 
+      <a href="terms.html" style="color:#a49984;">Terms of Service</a>
+    </footer>
+  </main>
+</body>
+</html>

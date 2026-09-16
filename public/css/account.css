@@ -1,0 +1,207 @@
+/* Account & Authentication Styles · Rabbi David */
+.account-main {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+}
+.account-main [hidden] {
+  display: none !important;
+}
+.account-tabs {
+  display: flex;
+  gap: 12px;
+  margin: 24px 0 16px;
+  border-bottom: 1px solid #332815;
+  padding-bottom: 12px;
+}
+.account-tab-btn {
+  background: transparent;
+  border: none;
+  color: #a49984;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all .2s ease;
+}
+.account-tab-btn.active {
+  color: #e2bf61;
+  background: #1c1810;
+  box-shadow: inset 0 -2px 0 #e2bf61;
+}
+.account-main form {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0 28px;
+}
+.account-main label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #dfd8cb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.account-main label span {
+  font-size: 12px;
+  color: #928570;
+  font-weight: 400;
+}
+.account-main input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #4a3d24;
+  border-radius: 8px;
+  background: #111720;
+  color: #fff;
+  font: inherit;
+  min-height: 48px;
+  transition: border-color .2s;
+}
+.account-main input:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 2px rgba(212,175,55,0.25);
+}
+.account-main button,
+.account-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: #e2bf61;
+  color: #17130a;
+  padding: 14px 22px;
+  font: 600 16px/1.5 sans-serif;
+  cursor: pointer;
+  white-space: normal;
+  text-align: center;
+  min-height: 48px;
+  text-decoration: none;
+  transition: background .2s, transform .1s;
+}
+.account-main button:hover,
+.account-action:hover {
+  background: #f1d580;
+}
+.account-main button:active,
+.account-action:active {
+  transform: translateY(1px);
+}
+.account-main button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+.account-heading {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.account-main .account-secondary {
+  background: transparent;
+  border: 1px solid #c6a553;
+  color: #f2d889;
+}
+.account-main .account-secondary:hover {
+  background: rgba(198,165,83,0.1);
+}
+.account-badge-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.account-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #1e2638;
+  color: #8fa4c7;
+}
+.account-badge.badge-gold {
+  background: #2a2211;
+  color: #e2bf61;
+  border: 1px solid #5a471f;
+}
+.account-badge.badge-green {
+  background: #11261b;
+  color: #72e09b;
+  border: 1px solid #234f37;
+}
+.account-reading {
+  padding: 24px;
+  border: 1px solid #3d321d;
+  border-radius: 14px;
+  margin: 20px 0;
+  background: #10151e;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.account-reading h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #fff;
+}
+.account-reading-meta {
+  color: #a49984;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.account-reading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+.account-reading audio {
+  width: 100%;
+  margin-top: 16px;
+  border-radius: 8px;
+}
+#accountStatus {
+  overflow-wrap: anywhere;
+  min-height: 24px;
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #151a24;
+  font-size: 14px;
+  color: #d1c7b7;
+}
+#accountStatus[data-error="true"] {
+  color: #ff9b91;
+  background: #2b1313;
+  border: 1px solid #6b2424;
+}
+#accountStatus[data-success="true"] {
+  color: #7de6a8;
+  background: #102619;
+  border: 1px solid #1c5232;
+}
+details {
+  border: 1px solid #2f2514;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  background: #0f131a;
+}
+details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #d4af37;
+}
+@media (max-width: 480px) {
+  .account-main { padding: 24px 16px; }
+  .account-reading { padding: 18px; }
+  .account-reading-actions > * { width: 100%; box-sizing: border-box; }
+}

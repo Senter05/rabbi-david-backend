@@ -16,12 +16,14 @@ from email.message import EmailMessage
 from email import policy
 from email.utils import parseaddr
 import mail_delivery
+from supabase_client import SupabaseClient
 
 ROOT=Path(__file__).resolve().parent
 LOCK=threading.RLock();POOL=BoundedExecutor();STOP=threading.Event()
 CONFIG={};DATA=None;DB=None;PORT=8100;AI_ENABLED=True;VOICE_ENABLED=False
 EMAIL_RESOLVER=None
 CATALOG=json.loads((ROOT/'catalog.json').read_text(encoding='utf-8'))
+SUPABASE=None
 
 @contextmanager
 def connection():
@@ -31,20 +33,27 @@ def connection():
     finally:con.close()
 
 def init(config,data,port=8100):
-    global CONFIG,DATA,DB,PORT
+    global CONFIG,DATA,DB,PORT,SUPABASE
     CONFIG=config;origins(config,port);DATA=Path(data);DATA.mkdir(parents=True,exist_ok=True);(DATA/'audio').mkdir(exist_ok=True);DB=DATA/'state.sqlite';PORT=port
+    SUPABASE=SupabaseClient(config)
     with connection() as con:
         con.executescript('''CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,data TEXT NOT NULL,updated REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS mail(id TEXT PRIMARY KEY,sid TEXT NOT NULL,recipient TEXT NOT NULL,subject TEXT NOT NULL,body TEXT NOT NULL,due REAL NOT NULL,kind TEXT NOT NULL,created REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS access(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL);
-CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,sid TEXT,event TEXT,created REAL);''')
+CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,sid TEXT,event TEXT,created REAL);
+CREATE TABLE IF NOT EXISTS recovery_keys(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY,session_id TEXT,email TEXT,book_id TEXT,amount INTEGER,currency TEXT,created REAL,delivery_status TEXT,provider_id TEXT,user_id TEXT);
+CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE,password_hash TEXT,salt TEXT,name TEXT,email_verified INTEGER DEFAULT 0,verification_token TEXT,created REAL,updated REAL);
+CREATE TABLE IF NOT EXISTS password_resets(token TEXT PRIMARY KEY,user_id TEXT,expires REAL);''')
         columns={r[1] for r in con.execute('PRAGMA table_info(mail)')}
         if 'delivery_status' not in columns:con.execute("ALTER TABLE mail ADD COLUMN delivery_status TEXT NOT NULL DEFAULT 'local'")
         for field in ['delivery_error','provider_message_id']:
             if field not in columns:con.execute('ALTER TABLE mail ADD COLUMN '+field+' TEXT')
         con.execute("UPDATE mail SET delivery_status='needs_review' WHERE delivery_status='sending'")
-        con.execute('CREATE TABLE IF NOT EXISTS recovery_keys(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL)')
-        con.execute('CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY,session_id TEXT,email TEXT,book_id TEXT,amount INTEGER,currency TEXT,created REAL,delivery_status TEXT,provider_id TEXT)')
+        sess_cols={r[1] for r in con.execute('PRAGMA table_info(sessions)')}
+        if 'user_id' not in sess_cols:con.execute('ALTER TABLE sessions ADD COLUMN user_id TEXT')
+        ord_cols={r[1] for r in con.execute('PRAGMA table_info(orders)')}
+        if 'user_id' not in ord_cols:con.execute('ALTER TABLE orders ADD COLUMN user_id TEXT')
         # A restarted worker must not pretend that an interrupted task completed.
         for row in con.execute('SELECT id,data FROM sessions').fetchall():
             d=json.loads(row['data']);d.pop('followup_pending',None)
@@ -71,9 +80,106 @@ def valid_identity(name,email):
     if not 1<=len(name)<=60 or not any(c.isalpha() for c in name) or any(ord(c)<32 or c in '<>' for c in name):raise ValueError('Please enter your first name (up to 60 characters).')
     return name,validate_contact_email(email,resolver=EMAIL_RESOLVER)
 
+def hash_password(password,salt=None):
+    if not salt:salt=secrets.token_hex(16)
+    try:h=hashlib.scrypt(password.encode('utf-8'),salt=salt.encode('utf-8'),n=16384,r=8,p=1).hex()
+    except Exception:h=hashlib.pbkdf2_hmac('sha256',password.encode('utf-8'),salt.encode('utf-8'),100000).hex()
+    return salt,h
+
+def verify_password(password,salt,password_hash):
+    if not salt or not password_hash:return False
+    try:h=hashlib.scrypt(password.encode('utf-8'),salt=salt.encode('utf-8'),n=16384,r=8,p=1).hex()
+    except Exception:h=hashlib.pbkdf2_hmac('sha256',password.encode('utf-8'),salt.encode('utf-8'),100000).hex()
+    return secrets.compare_digest(h,password_hash)
+
+def get_user_by_email(email):
+    if not email:return None
+    email=email.strip().lower()
+    with connection() as con:
+        r=con.execute('SELECT * FROM users WHERE email=?',(email,)).fetchone()
+        return dict(r) if r else None
+
+def get_user_by_id(uid):
+    if not uid:return None
+    with connection() as con:
+        r=con.execute('SELECT * FROM users WHERE id=?',(uid,)).fetchone()
+        return dict(r) if r else None
+
+def create_or_get_user(email,password=None,name=''):
+    email=email.strip().lower()
+    u=get_user_by_email(email)
+    if u:return u,False
+    uid=secrets.token_urlsafe(16)
+    salt,pw_hash=hash_password(password) if password else ('','')
+    v_token=secrets.token_urlsafe(32)
+    now=time.time()
+    with connection() as con:
+        con.execute('INSERT INTO users(id,email,password_hash,salt,name,email_verified,verification_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?)',
+                    (uid,email,pw_hash,salt,name,0,v_token,now,now))
+    return get_user_by_id(uid),True
+
+def safe_user(u):
+    if not u:return None
+    return {'id':u['id'],'email':u['email'],'name':u.get('name',''),'email_verified':bool(u.get('email_verified')),'created':u.get('created')}
+
+def link_user_sessions(user_id,email,active_sid=None):
+    if not user_id or not email:return
+    email=email.strip().lower()
+    with connection() as con:
+        rows=con.execute('SELECT id,data,user_id FROM sessions').fetchall()
+        for r in rows:
+            if r['user_id']==user_id:continue
+            d=json.loads(r['data'])
+            if d.get('email','').strip().lower()==email:
+                d['user_id']=user_id
+                con.execute('UPDATE sessions SET user_id=?,data=? WHERE id=?',(user_id,json.dumps(d),r['id']))
+        if active_sid:
+            con.execute('UPDATE sessions SET user_id=? WHERE id=?',(user_id,active_sid))
+            r=con.execute('SELECT data FROM sessions WHERE id=?',(active_sid,)).fetchone()
+            if r:
+                d=json.loads(r['data'])
+                if not d.get('email'):d['email']=email
+                d['user_id']=user_id
+                con.execute('UPDATE sessions SET data=? WHERE id=?',(json.dumps(d),active_sid))
+        con.execute('UPDATE orders SET user_id=? WHERE (user_id IS NULL OR user_id="") AND email=?',(user_id,email))
+
+def get_user_readings_list(user_id):
+    if not user_id:return []
+    readings=[]
+    with connection() as con:
+        rows=con.execute('SELECT id,data,updated FROM sessions WHERE user_id=? ORDER BY updated DESC',(user_id,)).fetchall()
+        for r in rows:
+            d=json.loads(r['data'])
+            if not d.get('started') and not d.get('reading') and len(d.get('answers',{}))<=1:continue
+            goal=d.get('answers',{}).get('goal','')
+            title='Your Personal Reading'
+            reading_obj=d.get('reading') or {}
+            if reading_obj.get('title'):title=reading_obj['title']
+            elif goal:title=f"Reading: {goal.replace('_',' ').capitalize()}"
+            readings.append({
+                'id':r['id'],
+                'title':title,
+                'status':d.get('status','draft'),
+                'tier':d.get('tier','free'),
+                'updated':r['updated'],
+                'has_audio':bool(d.get('audio_file') and d.get('voice',{}).get('status')=='ready'),
+                'audio_url':'/api/audio' if (d.get('audio_file') and d.get('voice',{}).get('status')=='ready') else None,
+                'has_plan':bool(d.get('plan') and d.get('tier')=='personal'),
+                'has_pdf':bool(d.get('status')=='ready'),
+                'step':d.get('step',0),
+                'completed_days':d.get('completed_days',[])
+            })
+    return readings
+
+def send_auth_mail(recipient,subject,body,kind='auth'):
+    mid=secrets.token_hex(16)
+    with connection() as con:
+        con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created,delivery_status) VALUES(?,?,?,?,?,?,?,?,?)',
+                    (mid,'auth',recipient,subject,body,time.time(),kind,time.time(),'pending' if mail_configured() else 'local'))
+
 def new_session():
     sid=secrets.token_urlsafe(32)
-    with connection() as con:con.execute('INSERT INTO sessions VALUES(?,?,?)',(sid,json.dumps(blank()),time.time()))
+    with connection() as con:con.execute('INSERT INTO sessions(id,data,updated) VALUES(?,?,?)',(sid,json.dumps(blank()),time.time()))
     return sid
 
 def get(sid):
@@ -576,6 +682,12 @@ class Handler(BaseHTTPRequestHandler):
         sid=cookie['rd_session'].value if 'rd_session' in cookie else ''
         if not re.fullmatch(r'[A-Za-z0-9_-]{40,50}',sid) or not get(sid):sid=new_session();self.new_cookie=sid
         return sid
+    def current_user(self):
+        sid=self.session()
+        with connection() as con:
+            r=con.execute('SELECT user_id FROM sessions WHERE id=?',(sid,)).fetchone()
+            if r and r['user_id']:return get_user_by_id(r['user_id'])
+        return None
     def allowed_host(self):
         allowed={urllib.parse.urlsplit(value).netloc for value in origins(CONFIG,PORT)}
         backend=os.environ.get('RENDER_EXTERNAL_HOSTNAME','')
@@ -590,6 +702,18 @@ class Handler(BaseHTTPRequestHandler):
         if not self.allowed_host() or not self.allowed_origin():return self.send(403,{'error':'This preview is available only on authorized hosts.'})
         u=urllib.parse.urlparse(self.path);path=u.path;sid=self.session() if path.startswith('/api/') or path=='/access' else None
         try:
+            if path=='/api/auth/status':
+                curr=self.current_user()
+                readings=get_user_readings_list(curr['id']) if curr else []
+                return self.send(obj={'enabled':True,'user':safe_user(curr),'readings':readings})
+            if path=='/api/auth/verify-email':
+                token=urllib.parse.parse_qs(u.query).get('token',[''])[0]
+                if not token:return self.send(400,{'error':'Missing verification token'})
+                with connection() as con:
+                    r=con.execute('SELECT id FROM users WHERE verification_token=?',(token,)).fetchone()
+                    if not r:return self.send(400,{'error':'Invalid verification token'})
+                    con.execute('UPDATE users SET email_verified=1,updated=? WHERE id=?',(time.time(),r['id']))
+                return self.send(obj={'message':'Email successfully verified.'})
             if path=='/api/state':return self.send(obj=safe_state(get(sid)))
             if path=='/api/catalog':return self.send(obj=[b for b in CATALOG if b.get('active',True)])
             if path=='/api/practices':return self.send(obj=PRACTICES)
@@ -603,7 +727,8 @@ class Handler(BaseHTTPRequestHandler):
                     if item['kind']=='plan' and (DATA/'outbox'/(item['id']+'.eml')).is_file():item['attachment_preview']='/api/plan-email?id='+item['id']
                 return self.send(obj=items)
             if path=='/api/plan-pdf':
-                d=get(sid)
+                d=get(sid);curr=self.current_user()
+                if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
                 if d['tier']!='personal':return self.send(403,{'error':'Your personal plan is required'})
                 if d['status']!='ready' or not d.get('plan'):return self.send(409,{'error':'Your plan is still being prepared'})
                 return self.send(body=plan_pdf(d),mime='application/pdf',headers={'Content-Disposition':'attachment; filename="your-personal-14-day-plan.pdf"'})
@@ -615,19 +740,23 @@ class Handler(BaseHTTPRequestHandler):
                 if not file.is_file():return self.send(404,{'error':'Email preview is not ready'})
                 return self.send(body=file.read_bytes(),mime='message/rfc822',headers={'Content-Disposition':'attachment; filename="your-plan-email.eml"'})
             if path=='/api/pdf':
-                d=get(sid)
+                d=get(sid);curr=self.current_user()
+                if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
                 if d['status']!='ready':return self.send(409,{'error':'Your reading is not ready yet'})
                 return self.send(body=reading_pdf(d),mime='application/pdf',headers={'Content-Disposition':'attachment; filename="your-rabbi-david-reading.pdf"'})
             if path=='/api/audio':
-                d=get(sid)
+                d=get(sid);curr=self.current_user()
+                if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
                 if not d.get('audio_file') or d['voice']['status']!='ready':return self.send(404,{'error':'Audio is not ready'})
                 return self.send_file(DATA/'audio'/d['audio_file'],mime='audio/mpeg',private=True)
             if path=='/api/welcome':
-                d=get(sid)
+                d=get(sid);curr=self.current_user()
+                if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
                 if not d.get('intro_file') or d.get('intro',{}).get('status')!='ready':return self.send(404,{'error':'Welcome is not ready'})
                 return self.send_file(DATA/'audio'/d['intro_file'],mime='audio/mpeg',private=True)
             if path=='/api/transcript':
-                d=get(sid)
+                d=get(sid);curr=self.current_user()
+                if d.get('user_id') and (not curr or curr['id']!=d['user_id']):return self.send(403,{'error':'Unauthorized access to this reading'})
                 if d['tier']!='personal':return self.send(403,{'error':'Personal plan required'})
                 return self.send(body=d['voice'].get('script','Audio has not been requested.').encode(),mime='text/plain; charset=utf-8')
             if path=='/access':
@@ -640,6 +769,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.new_cookie=r['sid'];return self.send(303,body=b'',headers={'Location':'/result.html'})
             if path=='/api/download-verify':
                 return self.handle_download_verify(u)
+            if path=='/api/new':
+                self.new_cookie=new_session();return self.send(obj=safe_state(get(self.new_cookie)))
             if path.startswith('/api/'):return self.send(404,{'error':'Not found'})
             if path=='/':path='/index.html'
             f=(ROOT/'public'/urllib.parse.unquote(path.lstrip('/'))).resolve()
@@ -693,10 +824,37 @@ class Handler(BaseHTTPRequestHandler):
             if path in ['/api/save','/api/generate','/api/followup','/api/demo-tier','/api/voice','/api/intro'] and not d.get('started'):return self.send(403,{'error':'Enter your first name and email before beginning the test.'})
             if path=='/api/enroll':
                 name,email=valid_identity(body.get('name'),body.get('email'))
+                password=body.get('password')
+                user_id=None
+                if password:
+                    if not isinstance(password,str) or len(password)<8 or len(password)>128:
+                        raise ValueError('Please choose a password with at least 8 characters.')
+                    u=get_user_by_email(email)
+                    if u:
+                        if u.get('password_hash') and not verify_password(password, u['salt'], u['password_hash']):
+                            raise ValueError('An account with this email already exists. Please sign in with your password or use password recovery.')
+                        user_id=u['id']
+                    else:
+                        u,_=create_or_get_user(email,password,name)
+                        user_id=u['id']
+                        if SUPABASE.is_configured():
+                            try:SUPABASE.sign_up(email,password,name)
+                            except Exception as ex:print(f"[SUPABASE SIGNUP ERROR] {ex}",flush=True)
+                        if mail_configured():
+                            send_auth_mail(email,'Welcome to Rabbi David',f"Hello {name},\n\nYour account has been created. Visit {public_origin()}/account.html anytime to review your saved reflections.\n\nRabbi David",'welcome')
+                else:
+                    u=get_user_by_email(email)
+                    if u:user_id=u['id']
+                    else:
+                        u,_=create_or_get_user(email,None,name)
+                        user_id=u['id']
                 def enroll(x):
                     if x.get('started'):return
-                    x.update(started=True,email=email,marketing=body.get('marketing') is True,enrolled_at=time.time());x['answers']['name']=name
+                    x.update(started=True,email=email,marketing=body.get('marketing') is True,enrolled_at=time.time())
+                    if user_id:x['user_id']=user_id
+                    x['answers']['name']=name
                 d=update(sid,enroll);event(sid,'test_started');sync_delivery(sid)
+                if user_id:link_user_sessions(user_id,email,sid)
             elif path=='/api/save':
                 if d.get('reading') or d['status']=='ready':raise ValueError('This test is complete. Start a new test to change your answers.')
                 if d['status']=='generating':raise ValueError('Please wait for your reading before editing')
@@ -869,13 +1027,153 @@ class Handler(BaseHTTPRequestHandler):
                 message=f'Reply address: {reply}\nTopic: {category}\n\n'+message
                 with connection() as con:con.execute('INSERT INTO mail(id,sid,recipient,subject,body,due,kind,created,delivery_status) VALUES(?,?,?,?,?,?,?,?,?)',(mid,sid,recipient,'Support request '+mid[:8],message,time.time(),'support',time.time(),'pending' if mail_configured() and CONFIG.get('support_email') else 'local'))
                 return self.send(obj={'reference':mid[:8],'message':('Your request is queued for support. Reference: ' if mail_configured() and CONFIG.get('support_email') else 'Your request is saved in this preview. External support delivery is not connected. Reference: ')+mid[:8]})
+            elif path=='/api/auth/register':
+                name,email=valid_identity(body.get('name'),body.get('email'))
+                password=body.get('password','')
+                if not isinstance(password,str) or len(password)<8 or len(password)>128:
+                    raise ValueError('Please choose a password with at least 8 characters.')
+                existing=get_user_by_email(email)
+                if existing and existing.get('password_hash'):
+                    raise ValueError('An account with this email already exists. Please sign in.')
+                u,created=create_or_get_user(email,password,name)
+                if not created:
+                    salt,pw_hash=hash_password(password)
+                    with connection() as con:
+                        con.execute('UPDATE users SET password_hash=?,salt=?,name=?,updated=? WHERE id=?',(pw_hash,salt,name,time.time(),u['id']))
+                    u=get_user_by_id(u['id'])
+                if SUPABASE.is_configured():
+                    try:SUPABASE.sign_up(email,password,name)
+                    except Exception as ex:print(f"[SUPABASE SIGNUP ERROR] {ex}",flush=True)
+                link_user_sessions(u['id'],email,sid)
+                def setup_session(x):
+                    x.update(user_id=u['id'],email=email,started=True)
+                    x['answers']['name']=name
+                update(sid,setup_session)
+                if mail_configured():
+                    send_auth_mail(email,'Welcome to Rabbi David',f"Hello {name},\n\nYour account has been created. Visit {public_origin()}/account.html anytime to review your saved reflections.\n\nRabbi David",'welcome')
+                return self.send(obj={'user':safe_user(u),'readings':get_user_readings_list(u['id']),'message':'Account created successfully.'})
+            elif path=='/api/auth/login':
+                email=body.get('email','')
+                password=body.get('password','')
+                if not isinstance(email,str) or not isinstance(password,str):
+                    raise ValueError('Please enter your email and password.')
+                email=email.strip().lower()
+                u=get_user_by_email(email)
+                if not u or not u.get('password_hash') or not verify_password(password,u['salt'],u['password_hash']):
+                    raise ValueError('Invalid email or password.')
+                link_user_sessions(u['id'],email,sid)
+                update(sid,lambda x:x.update(user_id=u['id'],email=email))
+                return self.send(obj={'user':safe_user(u),'readings':get_user_readings_list(u['id']),'message':'Signed in successfully.'})
+            elif path=='/api/auth/logout':
+                self.clear_cookie=True
+                new_sid=new_session();self.new_cookie=new_sid
+                return self.send(obj={'message':'You have been signed out.'})
+            elif path=='/api/auth/status':
+                curr=self.current_user()
+                readings=get_user_readings_list(curr['id']) if curr else []
+                return self.send(obj={'enabled':True,'user':safe_user(curr),'readings':readings})
+            elif path=='/api/auth/open':
+                reading_id=body.get('reading_id','')
+                curr=self.current_user()
+                if not curr:raise ValueError('Please sign in to open your reading.')
+                with connection() as con:
+                    row=con.execute('SELECT id,data FROM sessions WHERE id=? AND user_id=?',(reading_id,curr['id'])).fetchone()
+                if not row:raise ValueError('Reading not found in your account.')
+                self.new_cookie=reading_id
+                reading_data=json.loads(row['data'])
+                return self.send(obj={'ready':reading_data.get('status')=='ready','id':reading_id})
+            elif path=='/api/auth/reset-request':
+                email=body.get('email','')
+                if not isinstance(email,str) or '@' not in email:
+                    raise ValueError('Please enter a valid email address.')
+                email=email.strip().lower()
+                u=get_user_by_email(email)
+                if u:
+                    token=secrets.token_urlsafe(32)
+                    with connection() as con:
+                        con.execute('DELETE FROM password_resets WHERE user_id=?',(u['id'],))
+                        con.execute('INSERT INTO password_resets(token,user_id,expires) VALUES(?,?,?)',(token,u['id'],time.time()+3600))
+                    reset_url=f"{public_origin()}/account.html?reset_token={token}"
+                    send_auth_mail(email,'Reset your Rabbi David password',f"Hello,\n\nWe received a request to reset your password. Use the link below to choose a new password:\n\n{reset_url}\n\nThis link expires in 1 hour. If you did not request this, please ignore this message.\n\nRabbi David",'password_reset')
+                    if SUPABASE.is_configured():
+                        try:SUPABASE.send_password_recovery(email,redirect_to=f"{public_origin()}/account.html")
+                        except Exception as ex:print(f"[SUPABASE RECOVER ERROR] {ex}",flush=True)
+                return self.send(obj={'message':'If this email belongs to an account, recovery instructions have been sent.'})
+            elif path=='/api/auth/reset-confirm':
+                token=body.get('token','')
+                password=body.get('password','')
+                if not isinstance(password,str) or len(password)<8 or len(password)>128:
+                    raise ValueError('Please choose a password with at least 8 characters.')
+                if not isinstance(token,str) or not token:
+                    raise ValueError('Invalid or missing reset token.')
+                with connection() as con:
+                    r=con.execute('SELECT user_id FROM password_resets WHERE token=? AND expires>?',(token,time.time())).fetchone()
+                    if not r:raise ValueError('This reset link is invalid or has expired.')
+                    user_id=r['user_id']
+                    salt,pw_hash=hash_password(password)
+                    con.execute('UPDATE users SET password_hash=?,salt=?,updated=? WHERE id=?',(pw_hash,salt,time.time(),user_id))
+                    con.execute('DELETE FROM password_resets WHERE user_id=?',(user_id,))
+                return self.send(obj={'message':'Your password has been updated. You can now sign in.'})
+            elif path=='/api/auth/verify-email':
+                token=body.get('token','')
+                if not isinstance(token,str) or not token:raise ValueError('Invalid verification token.')
+                with connection() as con:
+                    r=con.execute('SELECT id FROM users WHERE verification_token=?',(token,)).fetchone()
+                    if not r:raise ValueError('Invalid verification token.')
+                    con.execute('UPDATE users SET email_verified=1,updated=? WHERE id=?',(time.time(),r['id']))
+                return self.send(obj={'message':'Email successfully verified.'})
+            elif path=='/api/internal/grant-tier':
+                email=body.get('email','').strip().lower()
+                session_id=body.get('session_id','').strip()
+                tier=body.get('tier','').strip().lower()
+                order_id=body.get('order_id') or ('ord_'+secrets.token_hex(8))
+                provider_id=body.get('provider_id','')
+                amount=int(body.get('amount',0))
+                if tier not in ['reading','personal']:
+                    raise ValueError('Invalid tier: choose reading or personal')
+                if not email and not session_id:
+                    raise ValueError('Must provide email or session_id')
+                target_sid=None
+                with connection() as con:
+                    if session_id:
+                        r=con.execute('SELECT id,data FROM sessions WHERE id=?',(session_id,)).fetchone()
+                        if r:target_sid=r['id']
+                    if not target_sid and email:
+                        rows=con.execute('SELECT id,data FROM sessions ORDER BY updated DESC').fetchall()
+                        for row in rows:
+                            d_row=json.loads(row['data'])
+                            if d_row.get('email')==email:
+                                target_sid=row['id'];break
+                if not target_sid:
+                    target_sid=new_session()
+                    u,_=create_or_get_user(email)
+                    update(target_sid,lambda x:x.update(started=True,email=email,user_id=u['id']))
+                def upgrade_tier(x):
+                    x['tier']=tier
+                    if email and not x.get('email'):x['email']=email
+                    if tier=='personal' and not x.get('plan'):x['plan_status']='preparing'
+                with LOCK:
+                    d=update(target_sid,upgrade_tier)
+                    sync_delivery(target_sid)
+                    event(target_sid,'grant_tier_'+tier)
+                    if tier=='personal' and d.get('plan_status')=='preparing':
+                        schedule(plan_job,target_sid,d['revision'])
+                with connection() as con:
+                    u=get_user_by_email(email)
+                    uid=u['id'] if u else None
+                    con.execute('INSERT OR REPLACE INTO orders(id,session_id,email,book_id,amount,currency,created,delivery_status,provider_id,user_id) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                                (order_id,target_sid,email,'tier_'+tier,amount,'usd',time.time(),'completed',provider_id,uid))
+                return self.send(obj={'success':True,'tier':tier,'sid':target_sid})
             elif path=='/api/new':
                 self.new_cookie=new_session();return self.send(obj=safe_state(get(self.new_cookie)))
             else:return self.send(404,{'error':'Not found'})
             return self.send(obj=safe_state(d))
         except CapacityError as e:return self.send(429,{'error':str(e)},headers={'Retry-After':'60'})
         except ValueError as e:return self.send(400,{'error':str(e)})
-        except Exception:return self.send(500,{'error':'Something could not be saved. Your last saved answers are safe.'})
+        except Exception as e:
+            print(f"[SERVER POST ERROR] {e}", flush=True)
+            import traceback; traceback.print_exc()
+            return self.send(500,{'error':'Something could not be saved. Your last saved answers are safe.'})
 
 def main():
     global AI_ENABLED,VOICE_ENABLED

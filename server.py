@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,sid TEXT,event TEXT,cre
             if field not in columns:con.execute('ALTER TABLE mail ADD COLUMN '+field+' TEXT')
         con.execute("UPDATE mail SET delivery_status='needs_review' WHERE delivery_status='sending'")
         con.execute('CREATE TABLE IF NOT EXISTS recovery_keys(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL)')
+        con.execute('CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY,session_id TEXT,email TEXT,book_id TEXT,amount INTEGER,currency TEXT,created REAL,delivery_status TEXT,provider_id TEXT)')
         # A restarted worker must not pretend that an interrupted task completed.
         for row in con.execute('SELECT id,data FROM sessions').fetchall():
             d=json.loads(row['data']);d.pop('followup_pending',None)
@@ -120,7 +121,7 @@ def sync_delivery(sid):
     step=view.get('first_step')
     if step:parts.extend(['Your first practical step',step['action'],step['why'],step['reflection']])
     for section in view['sections']:parts.extend([section['title'],section['text']])
-    if d['tier']=='free':parts.append('Your complete written reading is free to keep. Save your PDF in your personal space. An optional personalized 14-day plan and audio are offered at USD $27, one-time; books are separate.')
+    if d['tier']=='free':parts.append('This is your free opening reflection, approximately 40% of your reading. Your saved personal space explains the complete reading and optional plan.')
     parts.append('Return with your private recovery key or request an email access link from the website. No purchase was made in this preview.'+('' if mail_configured() else ' Delivery status is shown in your saved reading.'))
     mail(sid,'reading_'+d['tier'],'Your Rabbi David reading is ready','\n\n'.join(p for p in parts if p))
     if d['marketing']:
@@ -142,6 +143,91 @@ def prepare_plan_delivery(sid):
     target=directory/(mid+'.eml');temporary=directory/(mid+'.tmp')
     temporary.write_bytes(message.as_bytes());temporary.replace(target)
     mail(sid,'plan',message['Subject'],'Your personal eighteen-page plan is attached to the prepared email. Download the PDF from your saved reading. Delivery status is shown in your saved reading.')
+
+EBOOK_DELIVERY = {
+    'rituals': {
+        'title': 'The 7 Jewish Money Rituals',
+        'files': ['The-7-Jewish-Money-Rituals.pdf'],
+        'url': 'https://rabbidavid.org/download/rituals.html'
+    },
+    'legacy': {
+        'title': 'Generational Wealth: The Torah Method',
+        'files': ['Generational-Wealth-The-Torah-Method.pdf'],
+        'url': 'https://rabbidavid.org/download/generational-wealth.html'
+    },
+    'complete': {
+        'title': "The Complete Rabbi's Wealth System",
+        'files': [
+            'The-Rabbis-Morning-Wealth-Blessing.pdf',
+            'Generational-Wealth-The-Torah-Method.pdf',
+            'The-7-Jewish-Money-Rituals.pdf',
+            'The-Complete-Rabbis-Wealth-System.pdf'
+        ],
+        'url': 'https://rabbidavid.org/download/complete.html'
+    },
+    'ceo': {
+        'title': 'The Torah CEO Code',
+        'files': ['The-Torah-CEO-Code.pdf'],
+        'url': 'https://rabbidavid.org/download/torah-ceo-code.html'
+    },
+    'morning': {
+        'title': "The Rabbi's Morning Wealth Blessing",
+        'files': ['The-Rabbis-Morning-Wealth-Blessing.pdf'],
+        'url': 'https://rabbidavid.org/download/morning-blessing.html'
+    }
+}
+
+def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, currency='usd'):
+    if not book_id or book_id not in EBOOK_DELIVERY:
+        amount_map = {3200: 'rituals', 7700: 'legacy', 15000: 'complete', 4600: 'ceo', 2700: 'morning'}
+        book_id = amount_map.get(amount, 'complete' if amount >= 15000 else 'rituals')
+    info = EBOOK_DELIVERY[book_id]
+    message = EmailMessage()
+    message['To'] = email
+    sender = CONFIG.get('mail_from') or 'Rabbi David <david@rabbidavid.org>'
+    message['From'] = sender
+    message['Subject'] = f"Your Ebook: {info['title']} — Rabbi David"
+    body = (
+        f"Shalom {name},\n\n"
+        f"Thank you for your order with Rabbi David.\n\n"
+        f"Your copy of {info['title']} is attached to this email as a digital PDF.\n\n"
+        f"You can also access and download your digital materials anytime at:\n"
+        f"{info['url']}\n\n"
+        f"If you have any questions or need assistance, reply to this email or contact us at sentercompanyls@gmail.com.\n\n"
+        f"With warm blessings,\n"
+        f"Rabbi David\n"
+        f"Senter Company LLC"
+    )
+    message.set_content(body)
+    ebooks_dir = ROOT / 'ebooks'
+    if not ebooks_dir.is_dir():
+        ebooks_dir = ROOT / 'public' / 'pdf'
+    for filename in info['files']:
+        pdf_path = ebooks_dir / filename
+        if pdf_path.is_file():
+            message.add_attachment(
+                pdf_path.read_bytes(),
+                maintype='application',
+                subtype='pdf',
+                filename=filename
+            )
+    provider_id = None
+    status = 'pending'
+    if mail_configured():
+        try:
+            provider_id = mail_delivery.send(CONFIG, message, order_id)
+            status = 'sent'
+        except Exception as e:
+            status = 'failed'
+            print(f"[EBOOK DELIVERY ERROR] order={order_id} error={e}", flush=True)
+    else:
+        status = 'local_preview'
+    with connection() as con:
+        con.execute(
+            "INSERT OR REPLACE INTO orders(id,session_id,email,book_id,amount,currency,created,delivery_status,provider_id) VALUES(?,?,?,?,?,?,?,?,?)",
+            (order_id, session_id, email, book_id, amount, currency, time.time(), status, provider_id)
+        )
+    return {'ok': True, 'status': status, 'provider_id': provider_id, 'book_id': book_id}
 
 def valid_answers(raw,complete=False,followup=None,unchanged=None):
     if not isinstance(raw,dict):raise ValueError('Please check your answers')
@@ -552,13 +638,50 @@ class Handler(BaseHTTPRequestHandler):
                         con.execute('DELETE FROM access WHERE token=?',(hashed,))
                 if not r:return self.send(400,body=b'Your link has expired or was already used. Return to the website to request another.',mime='text/plain')
                 self.new_cookie=r['sid'];return self.send(303,body=b'',headers={'Location':'/result.html'})
+            if path=='/api/download-verify':
+                return self.handle_download_verify(u)
             if path.startswith('/api/'):return self.send(404,{'error':'Not found'})
             if path=='/':path='/index.html'
             f=(ROOT/'public'/urllib.parse.unquote(path.lstrip('/'))).resolve()
             if not f.is_relative_to((ROOT/'public').resolve()) or not f.is_file():return self.send(404,{'error':'Not found'})
             return self.send_file(f)
         except Exception:return self.send(500,{'error':'Something could not be loaded. Please try again.'})
+    def handle_stripe_webhook(self):
+        try:
+            length=int(self.headers.get('Content-Length','0'))
+            if length<=0 or length>500000:return self.send(400,{'error':'Invalid payload size'})
+            raw=self.rfile.read(length)
+            event=json.loads(raw)
+            if event.get('type')=='checkout.session.completed':
+                session=event.get('data',{}).get('object',{})
+                session_id=session.get('id','')
+                customer_details=session.get('customer_details') or {}
+                email=customer_details.get('email') or session.get('customer_email') or ''
+                name=customer_details.get('name') or 'Valued Reader'
+                metadata=session.get('metadata') or {}
+                book_id=metadata.get('book_id','')
+                amount=session.get('amount_total',0)
+                currency=session.get('currency','usd')
+                order_id='ord_'+(session_id if session_id else hashlib.sha256(raw).hexdigest()[:16])
+                if email:
+                    deliver_ebook(order_id,email,name,book_id,session_id=session_id,amount=amount,currency=currency)
+            return self.send(200,{'received':True})
+        except Exception as e:
+            print(f"[STRIPE WEBHOOK ERROR] {e}",flush=True)
+            return self.send(400,{'error':'Webhook processing error'})
+    def handle_download_verify(self,u):
+        qs=urllib.parse.parse_qs(u.query)
+        session_id=qs.get('session_id',[''])[0]
+        if not session_id:return self.send(400,{'error':'Missing session_id'})
+        with connection() as con:
+            order=con.execute("SELECT * FROM orders WHERE session_id=?",(session_id,)).fetchone()
+        if order:
+            return self.send(200,{'verified':True,'email':order['email'],'book_id':order['book_id'],'delivery_status':order['delivery_status']})
+        return self.send(200,{'verified':False,'status':'processing'})
     def do_POST(self):
+        path=urllib.parse.urlsplit(self.path).path
+        if path=='/api/stripe-webhook':
+            return self.handle_stripe_webhook()
         if not self.allowed_host() or self.headers.get('X-Requested-With')!='RabbiDavid':return self.send(403,{'error':'Request not allowed'})
         if not self.allowed_origin():return self.send(403,{'error':'Request not allowed'})
         try:
@@ -723,6 +846,16 @@ class Handler(BaseHTTPRequestHandler):
                 matches=[r for r in rows if json.loads(r['data']).get('email')==email and email]
                 if matches:recovery_mail(matches[0]['id'])
                 return self.send(obj={'message':('If a reading is associated with this email, a secure access message has been queued for delivery.' if mail_configured() else 'Email recovery is not connected yet. Use your private recovery key below, or contact support. No external email was sent.')})
+            elif path=='/api/resend-ebook':
+                email=body.get('email','').strip().lower()
+                book_id=body.get('book_id','').strip()
+                session_id=body.get('session_id','').strip()
+                name=body.get('name','Valued Reader').strip()
+                if not email or '@' not in email:raise ValueError('Please enter a valid email address.')
+                if not book_id or book_id not in EBOOK_DELIVERY:raise ValueError('Invalid book selection.')
+                order_id='resend_'+hashlib.sha256(f'{email}:{book_id}:{time.time()}'.encode()).hexdigest()[:16]
+                res=deliver_ebook(order_id,email,name,book_id,session_id=session_id)
+                return self.send(obj={'message':f"Your ebook has been sent to {email}.",'status':res['status']})
             elif path=='/api/support':
                 message=body.get('message','')
                 if not isinstance(message,str):raise ValueError('Please enter your message.')

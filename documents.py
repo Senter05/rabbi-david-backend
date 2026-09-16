@@ -57,7 +57,7 @@ def reading_pdf(data):
         canvas.drawString(48, 32, 'Your personal reading  |  Rabbi David')
         canvas.drawRightString(w-48, 32, f'Page {doc.page}')
         canvas.restoreState()
-    tier_label = {'free':'YOUR COMPLETE FREE READING', 'reading':'YOUR COMPLETE READING', 'personal':'YOUR PERSONAL READING & ACTION PLAN'}.get(data['tier'], 'YOUR PERSONAL READING')
+    tier_label = {'free':'YOUR OPENING READING', 'reading':'YOUR COMPLETE READING', 'personal':'YOUR PERSONAL READING & ACTION PLAN'}.get(data['tier'], 'YOUR PERSONAL READING')
     story = [p(tier_label, 'label'), p(reading['title'], 'title'), p('Prepared for '+name), p('Based on the priorities you shared. Spiritual reflection, not a prediction or financial advice.', 'small'), HRFlowable(width=42, thickness=2, color=GOLD, spaceAfter=18)]
     if reading.get('summary'): story.append(p(reading['summary']))
     if reading.get('insight'): story.extend([p('A THOUGHT TO CARRY WITH YOU', 'label'), p(reading['insight'], 'insight')])
@@ -75,7 +75,7 @@ def reading_pdf(data):
         source=_plan_sources().get(section.get('source_id'))
         if source:story.append(p('Source: '+source['title']+' | '+source['url'],'small'))
     if data['tier'] == 'free':
-        story.extend([Spacer(1, 12), p('ABOUT THIS EDITION','label'),p('Your complete written reading is included free. Your optional personalized 14-day plan and audio are a separate USD $27 one-time package. Books are sold separately.', 'small')])
+        story.extend([Spacer(1, 12), p('ABOUT THIS EDITION','label'),p('This PDF contains your opening 40% preview. Your complete reading continues with the remaining perspectives.', 'small')])
     if data['tier'] == 'personal' and data.get('plan'):
         story.extend([PageBreak(), p('REFLECTION INTO PRACTICE','label'), p('Your fourteen-day plan','title'), p('Small steps, at your own pace. Adapt each activity to your circumstances. No financial outcome is promised.', 'small')])
         for day in data['plan']:

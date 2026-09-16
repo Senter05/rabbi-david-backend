@@ -109,6 +109,7 @@ def plan_pdf(data):
     answers = data.get('answers') or {}
     name = str(answers.get('name') or 'you')
     legacy = any(not item.get('teaching') or not item.get('why') or not item.get('source_id') for item in days)
+    guided = data.get('plan_source') == 'guided'
     used_ids = list(dict.fromkeys(str(item.get('source_id')) for item in days if str(item.get('source_id')) in sources))
     unknown_ids = {str(item.get('source_id')) for item in days if item.get('source_id') and str(item.get('source_id')) not in sources}
     buf = BytesIO()
@@ -193,7 +194,9 @@ def plan_pdf(data):
             cover.extend([(title.upper(), 'label', 5), (value, 'body', 13)])
     if not any(value for _, value in profile):
         cover.append(('The priorities from this saved edition are not available here. The daily pages below reproduce your saved plan without inferring personal details.', 'small', 16))
-    if legacy:
+    if guided:
+        cover.append(('GUIDED EDITION: These exercises use your chosen priority and practice time. Your detailed personal plan could not be completed yet. You can request it again from your reading.', 'small', 14))
+    elif legacy:
         cover.append(('SAVED EARLIER EDITION: Some daily teaching, source or explanation fields were not part of this plan. Those omissions are clearly marked. No new personal explanation has been invented.', 'small', 14))
     cover.append(('Educational and spiritual reflection. This plan does not predict events or promise a financial outcome.', 'small', 0))
     render(1, 'Your fourteen-day plan', cover)
@@ -217,6 +220,8 @@ def plan_pdf(data):
                 items.append(('Source: ' + str(source['title']) + '. Full reference on page 18.', 'small', 12))
             else:
                 items.append(('No verified source reference was saved for this teaching. Treat it as an unattributed reflection, not a quotation from a traditional text.', 'small', 12))
+        elif guided:
+            items.extend([('A GUIDED PRACTICE', 'label', 5), ('An original reflection based on your chosen priority. This edition does not include a separate daily teaching or source commentary.', 'small', 14)])
         else:
             items.extend([('ABOUT THIS SAVED EDITION', 'label', 5), ('A separate teaching and source were not included in this earlier plan. The modern exercise below is preserved as saved.', 'small', 14)])
         if day.get('why'):

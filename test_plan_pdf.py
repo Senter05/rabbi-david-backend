@@ -99,6 +99,17 @@ class PlanPDFTests(unittest.TestCase):
             self.assertIn(data['plan'][0]['action'][:35], pdf[2].get_text())
             self.assertIn('No source references were recorded', pdf[17].get_text())
 
+    def test_new_guided_fallback_is_not_labelled_as_an_older_saved_plan(self):
+        data=deepcopy(self.data)
+        data['plan_source']='guided'
+        for day in data['plan']:
+            for key in ['teaching','why','source_id']:day.pop(key)
+        with fitz.open(stream=plan_pdf(data),filetype='pdf') as pdf:
+            self.assertEqual(len(pdf),18)
+            self.assertIn('GUIDED EDITION',pdf[0].get_text())
+            self.assertNotIn('SAVED EARLIER EDITION',pdf[0].get_text())
+            self.assertIn('A GUIDED PRACTICE',pdf[2].get_text())
+
     def test_wrong_day_count_and_oversized_content_fail_explicitly(self):
         data = deepcopy(self.data)
         data['plan'].pop()

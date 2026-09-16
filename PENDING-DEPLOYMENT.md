@@ -12,10 +12,12 @@ Do not describe v5 as deployed until `/api/config` returns `2026-09-15-mobile-re
 - An email match alone cannot claim historical sessions or orders. Switching accounts creates a separate session.
 - Detailed plan validation provides private day/field diagnostics and at most one repair request per batch. Connection errors and provider rate limits are not retried automatically.
 - Short welcome no longer says a completed plan is still being prepared.
+- A newly generated guided fallback PDF is labelled as a guided edition, not as an older saved plan.
 
 ## Checks performed
 
 - 111 Python tests passed; 16 JavaScript UI tests passed.
+- Seven PDF tests passed after the guided-edition label adjustment, including its new regression check.
 - Six account security regressions fail against the earlier code and pass against the correction.
 - Real DeepSeek plan test: 14 valid days, five minutes each, one repaired batch.
 

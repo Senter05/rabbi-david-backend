@@ -326,12 +326,12 @@ EBOOK_DELIVERY = {
         'url': 'https://rabbidavid.org/download/morning-blessing.html'
     },
     'rituals': {
-        'title': 'The 7 Jewish Money Rituals',
+        'title': 'The 7 Hidden Money Rituals of Secret Jewish Dynasties',
         'files': ['The-7-Jewish-Money-Rituals.pdf'],
         'url': 'https://rabbidavid.org/download/rituals.html'
     },
     'complete': {
-        'title': "The Complete Rabbi's Wealth System (Row 1 Trilogy)",
+        'title': "The Master Kabbalah Wealth System: The 30-Day Financial Vault (Row 1 Trilogy)",
         'files': [
             'The-Rabbis-Morning-Wealth-Blessing.pdf',
             'The-7-Jewish-Money-Rituals.pdf',
@@ -340,17 +340,17 @@ EBOOK_DELIVERY = {
         'url': 'https://rabbidavid.org/download/complete.html'
     },
     'legacy': {
-        'title': 'Generational Wealth: The Torah Method',
+        'title': 'The Generational Vault: Wealth That Outlives You 4 Generations',
         'files': ['Generational-Wealth-The-Torah-Method.pdf'],
         'url': 'https://rabbidavid.org/download/generational-wealth.html'
     },
     'ceo': {
-        'title': 'The Torah CEO Code',
+        'title': 'Ancient Jewish Rules for Commercial Dominance',
         'files': ['The-Torah-CEO-Code.pdf'],
         'url': 'https://rabbidavid.org/download/torah-ceo-code.html'
     },
     'protection': {
-        'title': 'The Jewish Wealth Protection Code',
+        'title': 'The Jewish Shield Against Financial Ruin',
         'files': ['The-Jewish-Wealth-Protection-Code.pdf'],
         'url': 'https://rabbidavid.org/download/protection.html'
     },
@@ -1201,11 +1201,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not book_id:raise ValueError('Missing book_id')
                 prices={
                     'morning': (2200, "The Rabbi's Morning Wealth Blessing — Rabbi David", '/download/morning-blessing.html'),
-                    'rituals': (3200, "The 7 Jewish Money Rituals — Rabbi David", '/download/rituals.html'),
-                    'complete': (12000, "The Complete Rabbi's Wealth System (Row 1 Trilogy) — Rabbi David", '/download/complete.html'),
-                    'legacy': (6200, "Generational Wealth: The Torah Method — Rabbi David", '/download/generational-wealth.html'),
-                    'ceo': (4600, "The Torah CEO Code — Rabbi David", '/download/torah-ceo-code.html'),
-                    'protection': (4900, "The Jewish Wealth Protection Code — Rabbi David", '/download/protection.html'),
+                    'rituals': (3200, "The 7 Hidden Money Rituals of Secret Jewish Dynasties — Rabbi David", '/download/rituals.html'),
+                    'complete': (12000, "The Master Kabbalah Wealth System: The 30-Day Financial Vault (Row 1 Trilogy) — Rabbi David", '/download/complete.html'),
+                    'legacy': (6200, "The Generational Vault: Wealth That Outlives You 4 Generations — Rabbi David", '/download/generational-wealth.html'),
+                    'ceo': (4600, "Ancient Jewish Rules for Commercial Dominance — Rabbi David", '/download/torah-ceo-code.html'),
+                    'protection': (4900, "The Jewish Shield Against Financial Ruin — Rabbi David", '/download/protection.html'),
                     'bundle_all': (20000, "The Complete 6-Ebook Master Collection — Rabbi David", '/download/all-access.html')
                 }
                 if book_id not in prices:raise ValueError(f'Unknown book: {book_id}')

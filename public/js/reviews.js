@@ -281,7 +281,7 @@ function renderIndexReviews(container, allReviews) {
         <button class="filter-btn ${currentFilter === 'test' ? 'active' : ''}" data-filter="test">Abundance Test (${allReviews.filter(r => r.productId === 'test').length})</button>
         <button class="filter-btn ${currentFilter === 'complete' ? 'active' : ''}" data-filter="complete">Rabbi's Wealth System (${allReviews.filter(r => r.productId === 'complete').length})</button>
         <button class="filter-btn ${currentFilter === 'legacy' ? 'active' : ''}" data-filter="legacy">Generational Wealth (${allReviews.filter(r => r.productId === 'legacy').length})</button>
-        <button class="filter-btn ${currentFilter === 'ceo' ? 'active' : ''}" data-filter="ceo">The Torah CEO Code (${allReviews.filter(r => r.productId === 'ceo').length})</button>
+        <button class="filter-btn ${currentFilter === 'ceo' ? 'active' : ''}" data-filter="ceo">Ancient Jewish Rules for Commercial Dominance (${allReviews.filter(r => r.productId === 'ceo').length})</button>
         <button class="filter-btn ${currentFilter === 'morning' ? 'active' : ''}" data-filter="morning">Morning Blessing (${allReviews.filter(r => r.productId === 'morning').length})</button>
         <button class="filter-btn ${currentFilter === 'rituals' ? 'active' : ''}" data-filter="rituals">7 Jewish Rituals (${allReviews.filter(r => r.productId === 'rituals').length})</button>
         <button class="filter-btn ${currentFilter === 'negotiation' ? 'active' : ''}" data-filter="negotiation">Negotiation Bible (${allReviews.filter(r => r.productId === 'negotiation').length})</button>

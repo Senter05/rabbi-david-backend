@@ -44,8 +44,8 @@
   },
   {
     "id": "ceo",
-    "title": "The Torah CEO Code",
-    "author": "Rabbi Ezra",
+    "title": "Ancient Jewish Rules for Commercial Dominance",
+    "author": "Rabbi David",
     "price": 46,
     "currency": "USD",
     "pages": 150,
@@ -54,14 +54,14 @@
     "goals": [
       "work"
     ],
-    "cover": "/images/ebook1-cover.png",
+    "cover": "/images/cover-commercial.webp",
     "sample": [
       "The Law of the Sealed Hand\nThe Partnership Test\nThe Negotiation Silence\nThe Rothschild Principle\nThe Hidden Price Law\nThe Debt Doctrine"
     ],
     "format": "e-book",
     "editorialStatus": "Existing e-book inspected; theological, historical and financial claims remain the author’s and require editorial review.",
     "language": "English",
-    "subtitle": "Prepare for better conversations and more thoughtful decisions.",
+    "subtitle": "Silence, Leverage, and Unfair Advantage in Modern Business and Negotiation.",
     "overview": "The book moves from privacy and preparation to partnership, negotiation and long-term thinking. Its chapters combine the author’s stories and interpretations with practical questions about conduct. Use it as a perspective to examine—not as a substitute for professional business or financial advice.",
     "chapters": [
       "The Law of the Sealed Hand",
@@ -82,8 +82,8 @@
   },
   {
     "id": "legacy",
-    "title": "Generational Wealth: The Torah Method",
-    "author": "Rabbi Ezra",
+    "title": "The Generational Vault: Wealth That Outlives You 4 Generations",
+    "author": "Rabbi David",
     "price": 62,
     "currency": "USD",
     "pages": 208,
@@ -93,14 +93,14 @@
       "legacy",
       "family"
     ],
-    "cover": "/images/ebook2-cover.png",
+    "cover": "/images/cover-generational.webp",
     "sample": [
       "The Family Constitution\nThe Inheritance Architecture\nThe Money Curriculum\nThe Apprenticeship Doctrine\nThe Fortress Strategy\nThe Reputation Currency"
     ],
     "format": "e-book",
     "editorialStatus": "Existing e-book inspected; theological, historical and financial claims remain the author’s and require editorial review.",
     "language": "English",
-    "subtitle": "Pass on what matters: your values, your knowledge and your care.",
+    "subtitle": "The Biblical Family Constitution for Unbreakable Bloodline Riches.",
     "overview": "This edition treats legacy as an ongoing family conversation. It explores written principles, learning by participation, succession and reputation, alongside the author’s accounts of historical families. It is a reading framework for planning and discussion, not a legal template or a guarantee that wealth will endure.",
     "chapters": [
       "The Family Constitution",
@@ -159,8 +159,8 @@
   },
   {
     "id": "rituals",
-    "title": "The 7 Jewish Money Rituals",
-    "author": "The Millionaire Rabbi",
+    "title": "The 7 Hidden Money Rituals of Secret Jewish Dynasties",
+    "author": "Rabbi David",
     "price": 32,
     "currency": "USD",
     "pages": 37,
@@ -169,14 +169,14 @@
     "goals": [
       "learning"
     ],
-    "cover": "/assets/books/rituals-cover.svg",
+    "cover": "/images/cover-rituals.webp",
     "sample": [
       "The Salt in the Wallet\nThe 3 Numbers in the Wallet\nThe Hebrew Word Before Sleep\nThe 3 Coins Under the Mattress\nThe Salt at the Threshold\nWashing Hands With Intention"
     ],
     "format": "e-book",
     "editorialStatus": "Existing e-book inspected; theological, historical and financial claims remain the author’s and require editorial review.",
     "language": "English",
-    "subtitle": "Bring a moment of intention to familiar daily routines.",
+    "subtitle": "Ancient Tangible Practices That Attract Perpetual Wealth.",
     "overview": "The seven practices combine household objects, spoken intention and the author’s mystical interpretation. They are presented as this author’s approach, not as universally prescribed Jewish observances. No object or ritual can promise a financial outcome. This complete ebook is also included in the four-ebook bundle.",
     "chapters": [
       "The Salt in the Wallet",
@@ -233,36 +233,36 @@
   },
   {
     "id": "complete",
-    "title": "The Complete Rabbi's Wealth System",
-    "author": "The Millionaire Rabbi",
+    "title": "The Master Kabbalah Wealth System: The 30-Day Financial Vault",
+    "author": "Rabbi David",
     "price": 120,
     "currency": "USD",
     "pages": 668,
     "language": "English",
     "category": "Prayer & daily practice",
-    "description": "The four-ebook bundle includes The Rabbi’s Morning Wealth Blessing, Generational Wealth: The Torah Method, The 7 Jewish Money Rituals, and The Complete Rabbi’s Wealth System.",
-    "subtitle": "Row 1 Trilogy Collection: Morning Blessing, 7 Money Rituals, and The Complete Wealth System.",
+    "description": "The four-ebook bundle includes The Rabbi’s Morning Wealth Blessing, The Generational Vault: Wealth That Outlives You 4 Generations, The 7 Hidden Money Rituals of Secret Jewish Dynasties, and The Complete Rabbi’s Wealth System.",
+    "subtitle": "Row 1 Trilogy Collection: Morning Blessing, 7 Hidden Rituals, and The Master Kabbalah System.",
     "overview": "Explore morning reflection, family legacy, seven symbolic practices and the thirty-day calendar together. Each title is a complete ebook; the bundle is separate from your AI-assisted reading, personal fourteen-day plan and audio.",
     "chapters": [
       "The Rabbi's Morning Wealth Blessing",
-      "Generational Wealth: The Torah Method",
-      "The 7 Jewish Money Rituals",
-      "The Complete Rabbi's Wealth System"
+      "The Generational Vault: Wealth That Outlives You 4 Generations",
+      "The 7 Hidden Money Rituals of Secret Jewish Dynasties",
+      "The Master Kabbalah Wealth System: The 30-Day Financial Vault"
     ],
     "forWhom": [
       "You want all four ebooks in one collection.",
       "You want to explore both everyday practice and family legacy.",
       "You want Morning Wealth Blessing, available exclusively in this bundle."
     ],
-    "cover": "/images/ebook3-cover.jpeg",
+    "cover": "/images/cover-kabbalah.webp",
     "detailPage": "the-complete-rabbis-wealth-system.html",
     "format": "3 e-books",
     "goals": [],
     "sample": [
       "The Rabbi's Morning Wealth Blessing",
-      "Generational Wealth: The Torah Method",
-      "The 7 Jewish Money Rituals",
-      "The Complete Rabbi's Wealth System"
+      "The Generational Vault: Wealth That Outlives You 4 Generations",
+      "The 7 Hidden Money Rituals of Secret Jewish Dynasties",
+      "The Master Kabbalah Wealth System: The 30-Day Financial Vault"
     ],
     "reviews": [],
     "editorialStatus": "Existing e-book inspected; theological, historical and financial claims remain the author’s and require editorial review.",
@@ -278,15 +278,15 @@
       },
       {
         "id": "rituals",
-        "title": "The 7 Jewish Money Rituals",
+        "title": "The 7 Hidden Money Rituals of Secret Jewish Dynasties",
         "pages": 37,
-        "cover": "/assets/books/rituals-cover.svg"
+        "cover": "/images/cover-rituals.webp"
       },
       {
         "id": "complete",
-        "title": "The Complete Rabbi's Wealth System",
+        "title": "The Master Kabbalah Wealth System: The 30-Day Financial Vault",
         "pages": 211,
-        "cover": "/images/ebook3-cover.jpeg"
+        "cover": "/images/cover-kabbalah.webp"
       }
     ]
   },
@@ -328,15 +328,15 @@
   },
   {
     "id": "protection",
-    "title": "The Jewish Wealth Protection Code",
-    "author": "Rabbi Aaron",
+    "title": "The Jewish Shield Against Financial Ruin",
+    "author": "Rabbi David",
     "price": 49,
     "currency": "USD",
     "pages": 163,
     "language": "English",
     "category": "Work & stewardship",
     "description": "Explore the author’s historical accounts and ideas about planning for uncertainty. Includes checklists and review questions to consider with a qualified financial or legal adviser.",
-    "subtitle": "Ask clearer questions about the future you are preparing for.",
+    "subtitle": "How to Protect Your Money, Assets, and Freedom From Any Crisis.",
     "overview": "This volume combines historical narratives with proposed frameworks for resilience, annual review and succession. It contains financial, legal and historical claims that require independent evaluation. Treat the checklists as discussion material for a qualified adviser, not instructions to move assets or a promise of protection.",
     "chapters": [
       "The Crisis Playbook",
@@ -351,7 +351,7 @@
       "You are interested in the author’s accounts of commercial history.",
       "You want topics to discuss with qualified advisers before taking action."
     ],
-    "cover": "/assets/books/protection-cover.svg",
+    "cover": "/images/cover-shield.webp",
     "detailPage": "the-jewish-wealth-protection-code.html",
     "format": "e-book",
     "goals": [],
@@ -478,13 +478,13 @@
     "currency": "USD",
     "pages": 981,
     "category": "Master Collection",
-    "description": "The definitive Rabbi David archive containing all six master editions: The Rabbi's Morning Wealth Blessing, The 7 Jewish Money Rituals, The Complete Rabbi's Wealth System, Generational Wealth: The Torah Method, The Torah CEO Code, and The Jewish Wealth Protection Code.",
+    "description": "The definitive Rabbi David archive containing all six master editions: The Rabbi's Morning Wealth Blessing, The 7 Hidden Money Rituals of Secret Jewish Dynasties, The Master Kabbalah Wealth System: The 30-Day Financial Vault, The Generational Vault: Wealth That Outlives You 4 Generations, Ancient Jewish Rules for Commercial Dominance, and The Jewish Shield Against Financial Ruin.",
     "subtitle": "All 6 complete editions in one grand library with immediate access and email delivery.",
     "format": "6 e-books",
     "ebookCount": 6,
     "offerType": "grand_bundle",
     "active": true,
-    "cover": "/images/ebook3-cover.jpeg",
+    "cover": "/images/cover-kabbalah.webp",
     "includedBooks": [
       {
         "id": "morning",
@@ -493,28 +493,28 @@
       },
       {
         "id": "rituals",
-        "title": "The 7 Jewish Money Rituals",
-        "cover": "/assets/books/rituals-cover.svg"
+        "title": "The 7 Hidden Money Rituals of Secret Jewish Dynasties",
+        "cover": "/images/cover-rituals.webp"
       },
       {
         "id": "complete",
-        "title": "The Complete Rabbi's Wealth System",
-        "cover": "/images/ebook3-cover.jpeg"
+        "title": "The Master Kabbalah Wealth System: The 30-Day Financial Vault",
+        "cover": "/images/cover-kabbalah.webp"
       },
       {
         "id": "legacy",
-        "title": "Generational Wealth: The Torah Method",
-        "cover": "/images/ebook2-cover.png"
+        "title": "The Generational Vault: Wealth That Outlives You 4 Generations",
+        "cover": "/images/cover-generational.webp"
       },
       {
         "id": "ceo",
-        "title": "The Torah CEO Code",
-        "cover": "/images/ebook1-cover.png"
+        "title": "Ancient Jewish Rules for Commercial Dominance",
+        "cover": "/images/cover-commercial.webp"
       },
       {
         "id": "protection",
-        "title": "The Jewish Wealth Protection Code",
-        "cover": "/assets/books/protection-cover.svg"
+        "title": "The Jewish Shield Against Financial Ruin",
+        "cover": "/images/cover-shield.webp"
       }
     ]
   }

@@ -25,12 +25,12 @@ Documento maestro para continuidad en cualquier sesión de trabajo, soporte y re
 ### E-Books Individuales y Bundles Oficiales (Stripe / Endpoint `/api/create-ebook-checkout`):
 - **Fila 1**:
   - *The Rabbi's Morning Wealth Blessing*: **$22 USD** (2200 centavos)
-  - *The 7 Jewish Money Rituals*: **$32 USD** (3200 centavos)
-  - *The Complete Rabbi's Wealth System (Trilogía Fila 1)*: **$120 USD** (12000 centavos) -> Descarga en `/download/complete.html`
+  - *The 7 Hidden Money Rituals of Secret Jewish Dynasties*: **$32 USD** (3200 centavos)
+  - *The Master Kabbalah Wealth System: The 30-Day Financial Vault (Trilogía Fila 1)*: **$120 USD** (12000 centavos) -> Descarga en `/download/complete.html`
 - **Fila 2**:
-  - *Generational Wealth: The Torah Method*: **$62 USD** (6200 centavos)
-  - *The Torah CEO Code*: **$46 USD** (4600 centavos)
-  - *The Jewish Wealth Protection Code*: **$49 USD** (4900 centavos)
+  - *The Generational Vault: Wealth That Outlives You 4 Generations*: **$62 USD** (6200 centavos)
+  - *Ancient Jewish Rules for Commercial Dominance*: **$46 USD** (4600 centavos)
+  - *The Jewish Shield Against Financial Ruin*: **$49 USD** (4900 centavos)
 - **Fila 3 (Oferta Única)**:
   - *The Complete 6-Ebook Master Collection*: **$200 USD** (20000 centavos) -> Descarga en `/download/all-access.html`
 - **Entrega Automática**:

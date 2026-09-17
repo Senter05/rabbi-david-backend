@@ -32,6 +32,9 @@ def send(config, message, mail_id):
     if transport(config) == 'resend':
         payload = {'from': config['mail_from'], 'to': [str(message['To'])],
                    'subject': str(message['Subject'])}
+        reply_to = message.get('Reply-To') or config.get('reply_to') or config.get('support_email')
+        if reply_to:
+            payload['reply_to'] = str(reply_to)
         for kind in ('plain', 'html'):
             body = message.get_body(preferencelist=(kind,))
             if body:

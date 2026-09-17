@@ -22,11 +22,20 @@ Documento maestro para continuidad en cualquier sesión de trabajo, soporte y re
 - **Test / Lectura / Plan / Audio**: Estrictamente **NO REEMBOLSABLES** (servicio personalizado digital, pago único sin suscripción).
 - **E-books**: Reembolsables bajo condiciones de soporte.
 
-### E-Books Individuales y Bundle (Stripe):
-- *The Rabbi's Morning Wealth Blessing*: **$27 USD** (`https://buy.stripe.com/6oU00lacucqC3KOdWrawo0l`)
-- *The 7 Jewish Money Rituals*: **$32 USD** (`https://buy.stripe.com/cNieVf3O6bmyftwdWrawo0h`)
-- *Generational Wealth: The Torah Method*: **$77 USD** (`https://buy.stripe.com/eVq5kF3O6gGS5SW9Gbawo0i`)
-- *The Complete Rabbi's Wealth System (4-Ebook Bundle)*: **$150 USD** (`https://buy.stripe.com/28E7sNfwOduGbdg9Gbawo0j`)
+### E-Books Individuales y Bundles Oficiales (Stripe / Endpoint `/api/create-ebook-checkout`):
+- **Fila 1**:
+  - *The Rabbi's Morning Wealth Blessing*: **$22 USD** (2200 centavos)
+  - *The 7 Jewish Money Rituals*: **$32 USD** (3200 centavos)
+  - *The Complete Rabbi's Wealth System (Trilogía Fila 1)*: **$120 USD** (12000 centavos) -> Descarga en `/download/complete.html`
+- **Fila 2**:
+  - *Generational Wealth: The Torah Method*: **$62 USD** (6200 centavos)
+  - *The Torah CEO Code*: **$46 USD** (4600 centavos)
+  - *The Jewish Wealth Protection Code*: **$49 USD** (4900 centavos)
+- **Fila 3 (Oferta Única)**:
+  - *The Complete 6-Ebook Master Collection*: **$200 USD** (20000 centavos) -> Descarga en `/download/all-access.html`
+- **Entrega Automática**:
+  - El webhook de Stripe (`checkout.session.completed`) o el endpoint `/api/create-ebook-checkout` dispara `deliver_ebook()`.
+  - Envía correo vía Resend SMTP con todos los PDFs del bundle adjuntos y redirige a la página de descarga para bajarlos al instante.
 
 ---
 

@@ -3,7 +3,7 @@
     "id": "morning",
     "title": "The Rabbi's Morning Wealth Blessing",
     "author": "Rabbi David",
-    "price": null,
+    "price": 22,
     "currency": "USD",
     "pages": 212,
     "category": "Prayer & daily practice",
@@ -36,8 +36,8 @@
     ],
     "detailPage": "morning-wealth-blessing.html",
     "reviews": [],
-    "active": false,
-    "availability": "bundle_only",
+    "active": true,
+    "availability": "available",
     "includedIn": [
       "complete"
     ]
@@ -78,13 +78,13 @@
     ],
     "detailPage": "torah-ceo-code.html",
     "reviews": [],
-    "active": false
+    "active": true
   },
   {
     "id": "legacy",
     "title": "Generational Wealth: The Torah Method",
     "author": "Rabbi Ezra",
-    "price": 77,
+    "price": 62,
     "currency": "USD",
     "pages": 208,
     "category": "Family & legacy",
@@ -235,13 +235,13 @@
     "id": "complete",
     "title": "The Complete Rabbi's Wealth System",
     "author": "The Millionaire Rabbi",
-    "price": 150,
+    "price": 120,
     "currency": "USD",
     "pages": 668,
     "language": "English",
     "category": "Prayer & daily practice",
     "description": "The four-ebook bundle includes The Rabbi’s Morning Wealth Blessing, Generational Wealth: The Torah Method, The 7 Jewish Money Rituals, and The Complete Rabbi’s Wealth System.",
-    "subtitle": "Four complete ebooks. One collection for your everyday practice and family legacy.",
+    "subtitle": "Row 1 Trilogy Collection: Morning Blessing, 7 Money Rituals, and The Complete Wealth System.",
     "overview": "Explore morning reflection, family legacy, seven symbolic practices and the thirty-day calendar together. Each title is a complete ebook; the bundle is separate from your AI-assisted reading, personal fourteen-day plan and audio.",
     "chapters": [
       "The Rabbi's Morning Wealth Blessing",
@@ -256,7 +256,7 @@
     ],
     "cover": "/images/ebook3-cover.jpeg",
     "detailPage": "the-complete-rabbis-wealth-system.html",
-    "format": "4 e-books",
+    "format": "3 e-books",
     "goals": [],
     "sample": [
       "The Rabbi's Morning Wealth Blessing",
@@ -268,19 +268,13 @@
     "editorialStatus": "Existing e-book inspected; theological, historical and financial claims remain the author’s and require editorial review.",
     "active": true,
     "offerType": "bundle",
-    "ebookCount": 4,
+    "ebookCount": 3,
     "includedBooks": [
       {
         "id": "morning",
         "title": "The Rabbi's Morning Wealth Blessing",
         "pages": 212,
         "cover": "/images/ebook-prayer-cover.webp"
-      },
-      {
-        "id": "legacy",
-        "title": "Generational Wealth: The Torah Method",
-        "pages": 208,
-        "cover": "/images/ebook2-cover.png"
       },
       {
         "id": "rituals",
@@ -366,7 +360,7 @@
     ],
     "reviews": [],
     "editorialStatus": "Existing e-book inspected; theological, historical and financial claims remain the author’s and require editorial review.",
-    "active": false
+    "active": true
   },
   {
     "id": "negotiation",
@@ -475,5 +469,53 @@
     "reviews": [],
     "editorialStatus": "Existing e-book inspected; theological, historical and financial claims remain the author’s and require editorial review.",
     "active": false
+  },
+  {
+    "id": "bundle_all",
+    "title": "The Complete 6-Ebook Master Collection",
+    "author": "Rabbi David Sacred Library",
+    "price": 200,
+    "currency": "USD",
+    "pages": 981,
+    "category": "Master Collection",
+    "description": "The definitive Rabbi David archive containing all six master editions: The Rabbi's Morning Wealth Blessing, The 7 Jewish Money Rituals, The Complete Rabbi's Wealth System, Generational Wealth: The Torah Method, The Torah CEO Code, and The Jewish Wealth Protection Code.",
+    "subtitle": "All 6 complete editions in one grand library with immediate access and email delivery.",
+    "format": "6 e-books",
+    "ebookCount": 6,
+    "offerType": "grand_bundle",
+    "active": true,
+    "cover": "/images/ebook3-cover.jpeg",
+    "includedBooks": [
+      {
+        "id": "morning",
+        "title": "The Rabbi's Morning Wealth Blessing",
+        "cover": "/images/ebook-prayer-cover.webp"
+      },
+      {
+        "id": "rituals",
+        "title": "The 7 Jewish Money Rituals",
+        "cover": "/assets/books/rituals-cover.svg"
+      },
+      {
+        "id": "complete",
+        "title": "The Complete Rabbi's Wealth System",
+        "cover": "/images/ebook3-cover.jpeg"
+      },
+      {
+        "id": "legacy",
+        "title": "Generational Wealth: The Torah Method",
+        "cover": "/images/ebook2-cover.png"
+      },
+      {
+        "id": "ceo",
+        "title": "The Torah CEO Code",
+        "cover": "/images/ebook1-cover.png"
+      },
+      {
+        "id": "protection",
+        "title": "The Jewish Wealth Protection Code",
+        "cover": "/assets/books/protection-cover.svg"
+      }
+    ]
   }
 ]

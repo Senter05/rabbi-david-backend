@@ -310,7 +310,7 @@ def prepare_plan_delivery(sid):
     mid=hashlib.sha256(f'{sid}:{d["revision"]}:plan'.encode()).hexdigest()
     message=EmailMessage()
     message['To']=d['email']
-    message['Subject']='Rabbi David | Your personal 14-day plan and audio are ready'
+    message['Subject']='Rabbi David | Your personal 14-day plan and audio are ready';message['Reply-To']=CONFIG.get('reply_to') or CONFIG.get('support_email') or 'sentercompanyls@gmail.com'
     message.set_content(f"Shalom {d['answers']['name']},\n\nYour personal 14-day plan is attached as a PDF.\n\nYour personal audio reading is also ready to listen to directly in your account:\n\n{public_origin()}/result.html\n\nOr sign in anytime here:\n\n{public_origin()}/account.html\n\nMay peace and blessing rest upon the work of your hands.\n\nWith warmth,\nRabbi David & Team")
     add_email_html(message,'plan',public_origin())
     message.add_attachment(pdf,maintype='application',subtype='pdf',filename='your-personal-14-day-plan.pdf')
@@ -320,48 +320,73 @@ def prepare_plan_delivery(sid):
     mail(sid,'plan',message['Subject'],message.get_body(preferencelist=('plain',)).get_content())
 
 EBOOK_DELIVERY = {
+    'morning': {
+        'title': "The Rabbi's Morning Wealth Blessing",
+        'files': ['The-Rabbis-Morning-Wealth-Blessing.pdf'],
+        'url': 'https://rabbidavid.org/download/morning-blessing.html'
+    },
     'rituals': {
         'title': 'The 7 Jewish Money Rituals',
         'files': ['The-7-Jewish-Money-Rituals.pdf'],
         'url': 'https://rabbidavid.org/download/rituals.html'
+    },
+    'complete': {
+        'title': "The Complete Rabbi's Wealth System (Row 1 Trilogy)",
+        'files': [
+            'The-Rabbis-Morning-Wealth-Blessing.pdf',
+            'The-7-Jewish-Money-Rituals.pdf',
+            'The-Complete-Rabbis-Wealth-System.pdf'
+        ],
+        'url': 'https://rabbidavid.org/download/complete.html'
     },
     'legacy': {
         'title': 'Generational Wealth: The Torah Method',
         'files': ['Generational-Wealth-The-Torah-Method.pdf'],
         'url': 'https://rabbidavid.org/download/generational-wealth.html'
     },
-    'complete': {
-        'title': "The Complete Rabbi's Wealth System",
-        'files': [
-            'The-Rabbis-Morning-Wealth-Blessing.pdf',
-            'Generational-Wealth-The-Torah-Method.pdf',
-            'The-7-Jewish-Money-Rituals.pdf',
-            'The-Complete-Rabbis-Wealth-System.pdf'
-        ],
-        'url': 'https://rabbidavid.org/download/complete.html'
-    },
     'ceo': {
         'title': 'The Torah CEO Code',
         'files': ['The-Torah-CEO-Code.pdf'],
         'url': 'https://rabbidavid.org/download/torah-ceo-code.html'
     },
-    'morning': {
-        'title': "The Rabbi's Morning Wealth Blessing",
-        'files': ['The-Rabbis-Morning-Wealth-Blessing.pdf'],
-        'url': 'https://rabbidavid.org/download/morning-blessing.html'
+    'protection': {
+        'title': 'The Jewish Wealth Protection Code',
+        'files': ['The-Jewish-Wealth-Protection-Code.pdf'],
+        'url': 'https://rabbidavid.org/download/protection.html'
+    },
+    'bundle_all': {
+        'title': 'The Complete 6-Ebook Master Collection',
+        'files': [
+            'The-Rabbis-Morning-Wealth-Blessing.pdf',
+            'The-7-Jewish-Money-Rituals.pdf',
+            'The-Complete-Rabbis-Wealth-System.pdf',
+            'Generational-Wealth-The-Torah-Method.pdf',
+            'The-Torah-CEO-Code.pdf',
+            'The-Jewish-Wealth-Protection-Code.pdf'
+        ],
+        'url': 'https://rabbidavid.org/download/all-access.html'
     }
 }
 
 def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, currency='usd'):
     if not book_id or book_id not in EBOOK_DELIVERY:
-        amount_map = {3200: 'rituals', 7700: 'legacy', 15000: 'complete', 4600: 'ceo', 2700: 'morning'}
-        book_id = amount_map.get(amount, 'complete' if amount >= 15000 else 'rituals')
+        amount_map = {
+            2200: 'morning', 2700: 'morning',
+            3200: 'rituals',
+            12000: 'complete', 15000: 'complete',
+            6200: 'legacy', 7700: 'legacy',
+            4600: 'ceo',
+            4900: 'protection',
+            20000: 'bundle_all'
+        }
+        book_id = amount_map.get(amount, 'bundle_all' if amount >= 20000 else ('complete' if amount >= 12000 else 'rituals'))
     info = EBOOK_DELIVERY[book_id]
     message = EmailMessage()
     message['To'] = email
     sender = CONFIG.get('mail_from') or 'Rabbi David <david@rabbidavid.org>'
     message['From'] = sender
     message['Subject'] = f"Rabbi David | Your book: {info['title']}"
+    message['Reply-To'] = CONFIG.get('reply_to') or CONFIG.get('support_email') or 'sentercompanyls@gmail.com'
     body = (
         f"Shalom {name},\n\nThank you for your order. Your digital book, {info['title']}, is ready.\n\n"
         f"Download your materials here:\n\n{info['url']}\n\n"
@@ -738,7 +763,7 @@ def dispatch_mail_once():
         add_email_html(message,row['kind'],public_origin())
         # Use the current recipient even when a saved MIME attachment is older.
         if message.get('To'):message.replace_header('To',row['recipient'])
-        message['From']=CONFIG['mail_from'];message['Message-ID']='<'+row['id']+'@'+parseaddr(CONFIG['mail_from'])[1].split('@')[-1]+'>'
+        message['From']=CONFIG['mail_from'];message['Reply-To']=CONFIG.get('reply_to') or CONFIG.get('support_email') or 'sentercompanyls@gmail.com';message['Message-ID']='<'+row['id']+'@'+parseaddr(CONFIG['mail_from'])[1].split('@')[-1]+'>'
         provider_id=mail_delivery.send(CONFIG,message,row['id'])
         status='sent';error=None
     except Exception as exc:
@@ -1164,6 +1189,47 @@ class Handler(BaseHTTPRequestHandler):
                     'metadata[user_id]':user_id,
                     'metadata[registered_email]':user_email,
                     'metadata[tier]':tier
+                }
+                if user_email:params['customer_email']=user_email
+                data=urllib.parse.urlencode(params).encode('utf-8')
+                req=urllib.request.Request('https://api.stripe.com/v1/checkout/sessions',data=data,headers={'Authorization':f'Bearer {stripe_key}'})
+                with urllib.request.urlopen(req,timeout=15) as r:
+                    cs_data=json.loads(r.read())
+                return self.send(200,{'ok':True,'checkout_url':cs_data.get('url'),'session_id':cs_data.get('id')})
+            elif path=='/api/create-ebook-checkout':
+                book_id=body.get('book_id')
+                if not book_id:raise ValueError('Missing book_id')
+                prices={
+                    'morning': (2200, "The Rabbi's Morning Wealth Blessing — Rabbi David", '/download/morning-blessing.html'),
+                    'rituals': (3200, "The 7 Jewish Money Rituals — Rabbi David", '/download/rituals.html'),
+                    'complete': (12000, "The Complete Rabbi's Wealth System (Row 1 Trilogy) — Rabbi David", '/download/complete.html'),
+                    'legacy': (6200, "Generational Wealth: The Torah Method — Rabbi David", '/download/generational-wealth.html'),
+                    'ceo': (4600, "The Torah CEO Code — Rabbi David", '/download/torah-ceo-code.html'),
+                    'protection': (4900, "The Jewish Wealth Protection Code — Rabbi David", '/download/protection.html'),
+                    'bundle_all': (20000, "The Complete 6-Ebook Master Collection — Rabbi David", '/download/all-access.html')
+                }
+                if book_id not in prices:raise ValueError(f'Unknown book: {book_id}')
+                unit_amount, prod_name, download_path = prices[book_id]
+                stripe_key=os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
+                if not stripe_key:raise ValueError('Stripe is not configured')
+                origin = public_origin()
+                success_url = f"{origin}{download_path}?checkout_session_id={{CHECKOUT_SESSION_ID}}&paid=true"
+                cancel_url = f"{origin}/#catalog"
+                user_email = body.get('email') or d.get('email') or (self.current_user() or {}).get('email') or ''
+                user_id = d.get('user_id') or (self.current_user() or {}).get('id') or ''
+                params={
+                    'payment_method_types[]':'card',
+                    'mode':'payment',
+                    'success_url':success_url,
+                    'cancel_url':cancel_url,
+                    'line_items[0][price_data][currency]':'usd',
+                    'line_items[0][price_data][unit_amount]':str(unit_amount),
+                    'line_items[0][price_data][product_data][name]':prod_name,
+                    'line_items[0][quantity]':'1',
+                    'metadata[session_id]':sid,
+                    'metadata[user_id]':user_id,
+                    'metadata[registered_email]':user_email,
+                    'metadata[book_id]':book_id
                 }
                 if user_email:params['customer_email']=user_email
                 data=urllib.parse.urlencode(params).encode('utf-8')

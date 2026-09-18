@@ -233,17 +233,18 @@ def plan_pdf(data):
         cover.append(('SAVED EARLIER EDITION: Some daily teaching, source or explanation fields were not part of this plan. Those omissions are clearly marked. No new personal explanation has been invented.', 'small', 14))
     cover.append(('Educational and spiritual reflection. This plan does not predict events or promise a financial outcome.', 'small', 0))
     render(1, 'Your fourteen-day plan', cover)
-    render(2, 'How to use your plan', [
-        ('BEGIN WHERE YOU ARE', 'label', 12), ('How to Use These Pages', 'title', 19),
-        ('Read one day at a time. You do not need to catch up if you miss a day. Return when you can and choose a pace you can sustain.', 'body', 17),
-        ('FIRST: READ THE TEACHING', 'label', 5), ('Where included, this is a reflection connected to a named text in the source library. It is a paraphrase or interpretation, not a claim that the source prescribed your daily exercise.', 'body', 16),
-        ('THEN: TRY THE MODERN EXERCISE', 'label', 5), ('The action, reflection and adaptation are contemporary prompts. Use what fits your life. You may shorten a step, speak instead of write, or skip an activity that does not suit your circumstances.', 'body', 16),
-        ('LOOK FOR SMALL, OBSERVABLE CHANGES', 'label', 5), ('Notice whether you can name a priority more clearly, keep a manageable routine or approach a conversation more thoughtfully. These are things to observe, not results you are expected to achieve.', 'body', 16),
-        ('KEEP A SIMPLE NOTE', 'label', 5), ('After each day, record one sentence: What did I try, and what did I notice? A notebook you already own or a spoken reflection is enough. No purchase or donation is needed.', 'body', 16),
-        ('YOUR PACE BELONGS TO YOU', 'label', 5), ('This material is not financial, legal, medical or mental-health advice. Seek qualified help for decisions that need it. The plan is a companion for reflection, not a substitute for personal support.', 'small', 0),
-    ])
     from book_bridge import resolve_book_recommendation
     rec = resolve_book_recommendation(answers)
+
+    render(2, 'How to use your plan', [
+        ('BEGIN WHERE YOU ARE', 'label', 12), ('How to Use These Pages', 'title', 19),
+        ('Read one day at a time. You do not need to catch up if you miss a day. Return when you can and choose a pace you can sustain.', 'body', 15),
+        ('FIRST: READ THE TEACHING', 'label', 5), ('Where included, this is a reflection connected to a named text in the source library. It is a paraphrase or interpretation, not a claim that the source prescribed your daily exercise.', 'body', 14),
+        ('THEN: TRY THE MODERN EXERCISE', 'label', 5), ('The action, reflection and adaptation are contemporary prompts. Use what fits your life. You may shorten a step, speak instead of write, or skip an activity that does not suit your circumstances.', 'body', 14),
+        ('SACRED VESSEL MILESTONES (DAYS 3, 7 & 14)', 'label', 5), (f"On Days 3, 7, and 14, you reach vital turning points where the vessel must be sealed. While this guide provides the daily rhythm, the complete physical ritual procedures, liturgical texts, and step-by-step formulas are preserved exclusively in your designated companion book, '{rec['title']}' on rabbidavid.org. Keep your copy open on those milestone days to complete the practice.", 'body', 14),
+        ('KEEP A SIMPLE NOTE', 'label', 5), ('After each day, record one sentence: What did I try, and what did I notice? A notebook you already own or a spoken reflection is enough.', 'body', 14),
+        ('YOUR PACE BELONGS TO YOU', 'label', 5), ('This material is not financial, legal, medical or mental-health advice. Seek qualified help for decisions that need it. The plan is a companion for reflection, not a substitute for personal support.', 'small', 0),
+    ])
 
     for day in days:
         dnum = day['day']
@@ -263,14 +264,26 @@ def plan_pdf(data):
             items.extend([('ABOUT THIS SAVED EDITION', 'label', 5), ('A separate teaching and source were not included in this earlier plan. The modern exercise below is preserved as saved.', 'small', 14)])
         if day.get('why'):
             items.extend([('WHY THIS STEP WAS CHOSEN', 'label', 5), (day['why'], 'body', 12)])
-        items.extend([('YOUR MODERN PRACTICE', 'label', 5), (str(day.get('action') or 'No action was saved for this day.'), 'body', 12), ('PAUSE & REFLECT', 'label', 5), (str(day.get('reflection') or 'What did you notice today?'), 'body', 12), ('MAKE IT WORK FOR YOU', 'label', 5), (str(day.get('adaptation') or 'You may shorten this practice or pause and return later.'), 'body', 0 if dnum not in (3, 7, 14) else 8)])
 
         mkey = f"day{dnum}"
+        raw_action = str(day.get('action') or 'No action was saved for this day.')
+        if mkey in rec.get('milestones', {}):
+            m_text = rec['milestones'][mkey]
+            action_text = f"Sacred Milestone: Consult '{rec['title']}' ({m_text}) on rabbidavid.org for the vessel-sealing ritual. Then proceed: {raw_action}"
+        else:
+            action_text = raw_action
+
+        items.extend([
+            ('YOUR MODERN PRACTICE', 'label', 4 if mkey in rec.get('milestones', {}) else 5), (action_text, 'body', 10 if mkey in rec.get('milestones', {}) else 12),
+            ('PAUSE & REFLECT', 'label', 4 if mkey in rec.get('milestones', {}) else 5), (str(day.get('reflection') or 'What did you notice today?'), 'body', 10 if mkey in rec.get('milestones', {}) else 12),
+            ('MAKE IT WORK FOR YOU', 'label', 4 if mkey in rec.get('milestones', {}) else 5), (str(day.get('adaptation') or 'You may shorten this practice or pause and return later.'), 'body', 0 if dnum not in (3, 7, 14) else 4)
+        ])
+
         if mkey in rec.get('milestones', {}):
             m_text = rec['milestones'][mkey]
             items.extend([
-                ('SACRED MILESTONE · DEEPENING IN THE TEXT', 'label', 4),
-                (f"Rabbi David's Note: For the sacred vessel-sealing formulas of Day {dnum:02d}, consult '{rec['title']}' ({m_text}).", 'note_box', 0)
+                ('SACRED MILESTONE · REQUIRED COMPANION TEXT', 'label', 2),
+                (f"Rabbi David's Note: The sacred vessel-sealing formulas of Day {dnum:02d} are sealed in '{rec['title']}' ({m_text}) on rabbidavid.org.", 'note_box', 0)
             ])
 
         render(dnum+2, f"Day {dnum:02d} | Your saved daily practice", items)
@@ -317,7 +330,8 @@ def plan_pdf(data):
     )
     p_companion = (
         f"For your continued journey beyond these fourteen days, I have designated '{rec['title']}' as your foundational companion. "
-        "Return to its teachings whenever you need to fortify your vessel against dissipation."
+        "Its pages contain the full, unabridged ritual system and generational codes that we could not fit into this fourteen-day guide. "
+        "Obtain your copy on rabbidavid.org to seal your vessel against dissipation."
     )
 
     page17_items = [

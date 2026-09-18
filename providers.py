@@ -2,6 +2,7 @@
 import time
 import json, urllib.request, urllib.error, urllib.parse, uuid, re, socket, ipaddress
 from content import route
+from book_bridge import resolve_book_recommendation
 
 REQUEST_GUARD=None
 
@@ -363,6 +364,7 @@ def generate_narration_script(config, answers, reading=None, plan=None):
     goal = answers.get('goal', 'calm')
     goal_label = next((o['label'] for q in route(answers) if q['id']=='goal' for o in q.get('options',[]) if o['value']==goal), goal)
     time_mins = answers.get('time', '10') if answers.get('time') in ['5', '10', '15'] else '10'
+    rec = resolve_book_recommendation(answers)
 
     key = config.get('openrouter_key')
     if key:
@@ -376,6 +378,9 @@ def generate_narration_script(config, answers, reading=None, plan=None):
             "timeless teachings of the Torah and sages on building true wealth without losing your soul, "
             "and clear psychological insights into the listener's dilemmas. "
             "Walk them through their 14-day path of quiet daily action. "
+            f"Address their root financial leak directly with deep pastoral insight: {rec['leak_diagnosis']} "
+            f"Explain that while the 14-day plan is the essential first step to build their daily vessel, {rec['audio_bridge_script']} "
+            "Deliver this guidance not as an advertisement, but as an elder imparting the indispensable sacred discipline for their situation. "
             "Close with a solemn, deeply moving rabbinic blessing of prosperity, protection, family peace, and joy. "
             "\n\nCRITICAL FORMAT RULES: "
             "Return ONLY the spoken words in English. NO Markdown, NO bolding, NO bullet points, NO section titles or headings. "
@@ -383,7 +388,17 @@ def generate_narration_script(config, answers, reading=None, plan=None):
             "The text will be read directly by an AI voice engine, so every word must be what Rabbi David speaks aloud. "
             "Ensure the total word count is strictly between 1300 and 1500 words."
         )
-        user_data = dict(name=name, goal=goal_label, time=time_mins, reading_summary=(reading or {}).get('summary', ''), reading_insight=(reading or {}).get('insight', ''))
+        user_data = dict(
+            name=name,
+            goal=goal_label,
+            time=time_mins,
+            note=answers.get('note') or answers.get('personal_detail') or '',
+            leak_diagnosis=rec['leak_diagnosis'],
+            recommended_book=rec['title'],
+            key_ritual=rec['key_ritual'],
+            reading_summary=(reading or {}).get('summary', ''),
+            reading_insight=(reading or {}).get('insight', '')
+        )
         payload = dict(
             model=config.get('openrouter_model', '~deepseek/deepseek-flash-latest'),
             max_tokens=3500,
@@ -438,6 +453,7 @@ def generate_narration_script(config, answers, reading=None, plan=None):
         "The third perspective invites you to recognize honest effort as a sacred partnership with the Divine. In Psalm 90, the psalmist prays: Establish the work of our hands upon us; yes, establish the work of our hands. Notice that the prayer does not ask for gold to rain down from heaven without labor. It asks that the honest labor of our hands be endowed with permanence and meaning. Every ethical service you provide, every thoughtful task you complete with integrity, is an act of sanctification. Do not despise the small beginnings. Treat your daily work not merely as a transaction to pay bills, but as your contribution to repairing the world. When your work is grounded in service, prosperity naturally follows as a byproduct of your character.",
         "The fourth perspective is the wisdom of returning. In Hebrew, renewal is called teshuvah, which literally means to return home. You will have days over the next two weeks when you feel tired, distracted, or discouraged. You may skip a morning of reflection or find yourself slipping back into old anxieties. When that happens, {name}, do not criticize yourself. Guilt is a wasteful emotion that drains the energy you need for progress. Simply recognize where you are, gently turn your attention back to your intention, and take the next small step. The righteous person does not succeed because they never stumble; they succeed because they rise up again with humility and perseverance.",
         "Now, looking ahead to the fourteen-day plan that has been placed into your hands, I want you to make a promise to yourself. Do not approach this plan as an examination to be passed or a heavy burden added to an already full schedule. Approach it as a daily appointment with your own soul. Each morning, open the day's guidance, read the teaching, and engage with the practical action with an open heart. Some days will ask you to write a single sentence of gratitude. Other days will ask you to set a clear boundary, evaluate an expenditure, or speak a word of encouragement. Follow the steps faithfully, one day at a time, and allow this timeless wisdom to quietly reorder your inner life.",
+        f"Yet, {name}, as your elder, I must share one further pastoral truth with you. This fourteen-day companion is designed to quiet the immediate noise and establish your daily discipline. But to truly seal the vessel so that what enters your hands remains, you must address the root leak. {rec['audio_bridge_script']} Keep this wisdom before your eyes as you begin Day 1 tomorrow morning.",
         f"As we conclude this time together, {name}, I want to offer you an ancient blessing from the depths of my heart. May the Almighty bless you and protect you. May the light of divine wisdom illuminate your eyes and grant you discernment in all your dealings. May peace rest upon your household, health reside in your body, and fruitful abundance reward the honest labor of your hands. May you walk with dignity, speak with kindness, and live with the profound knowledge that your life is guided, cherished, and rich with promise. Amen, and may your journey forward be blessed with light and peace."
     ]
     return "\n\n".join(paragraphs)

@@ -17,9 +17,9 @@ services:
       - key: DATA_DIR
         sync: false
       - key: ENABLE_VOICE
-        value: "0"
+        value: "1"
       - key: FREE_TESTING
-        value: "false"
+        value: "true"
       - key: SMTP_HOST
         # Existing Resend SMTP credentials are automatically used over HTTPS.
         # RESEND_API_KEY, when set in Render, takes precedence over SMTP_PASSWORD.

@@ -171,16 +171,17 @@ def plan_pdf(data):
         options = [11.8, 11.4, 11.0] if not compact else [10.5, 10.0, 9.5]
         measured = None
         for attempt, size in enumerate(options):
-            dense_day = 3 <= page <= 16
-            leading = size * ([1.43, 1.35, 1.26][attempt] if dense_day else 1.43)
+            dense_day = 3 <= page <= 17
+            leading = size * ([1.43, 1.35, 1.25][attempt] if dense_day else 1.43)
             title_size = [23, 21, 19][attempt] if dense_day else (27 if page == 1 else 23)
             title_leading = [27, 24, 22][attempt] if dense_day else (31 if page == 1 else 27)
-            gap_scale = [1, .75, .5][attempt] if dense_day else 1
+            gap_scale = [1, .75, .45][attempt] if dense_day else 1
             styles = {
                 'body': ParagraphStyle('pb', fontName='RDInter', fontSize=size, leading=leading, textColor=INK),
                 'title': ParagraphStyle('pt', fontName='RDFraunces', fontSize=title_size, leading=title_leading, textColor=NAVY),
                 'label': ParagraphStyle('pl', fontName='RDSemibold', fontSize=9, leading=13, textColor=GOLD),
-                'small': ParagraphStyle('ps', fontName='RDInter', fontSize=11 if not compact else size, leading=15, textColor=INK),
+                'small': ParagraphStyle('ps', fontName='RDInter', fontSize=11 if not compact else size, leading=14 if dense_day else 15, textColor=INK),
+                'note_box': ParagraphStyle('pnb', fontName='RDInter', fontSize=11 if not compact else size, leading=14 if dense_day else 15, textColor=NAVY),
                 'signature': ParagraphStyle('psig', fontName='RDFraunces', fontSize=18, leading=22, textColor=NAVY),
                 'signature_sub': ParagraphStyle('psigsub', fontName='RDCinzel', fontSize=9.5, leading=13, textColor=GOLD),
                 'signature_bless': ParagraphStyle('psigbless', fontName='RDInter', fontSize=10, leading=14, textColor=INK, leftIndent=16),
@@ -241,10 +242,14 @@ def plan_pdf(data):
         ('KEEP A SIMPLE NOTE', 'label', 5), ('After each day, record one sentence: What did I try, and what did I notice? A notebook you already own or a spoken reflection is enough. No purchase or donation is needed.', 'body', 16),
         ('YOUR PACE BELONGS TO YOU', 'label', 5), ('This material is not financial, legal, medical or mental-health advice. Seek qualified help for decisions that need it. The plan is a companion for reflection, not a substitute for personal support.', 'small', 0),
     ])
+    from book_bridge import resolve_book_recommendation
+    rec = resolve_book_recommendation(answers)
+
     for day in days:
+        dnum = day['day']
         sid = str(day.get('source_id') or '')
         source = sources.get(sid)
-        items = [(f"DAY {day['day']:02d} OF 14  ·  {day.get('minutes', 'Your chosen')} MINUTES", 'label', 8), (str(day.get('title') or 'Your daily practice'), 'title', 15)]
+        items = [(f"DAY {dnum:02d} OF 14  ·  {day.get('minutes', 'Your chosen')} MINUTES", 'label', 8), (str(day.get('title') or 'Your daily practice'), 'title', 15)]
         teaching = day.get('teaching')
         if teaching:
             items.extend([('A TEACHING TO CONSIDER', 'label', 5), (teaching, 'body', 9)])
@@ -258,8 +263,17 @@ def plan_pdf(data):
             items.extend([('ABOUT THIS SAVED EDITION', 'label', 5), ('A separate teaching and source were not included in this earlier plan. The modern exercise below is preserved as saved.', 'small', 14)])
         if day.get('why'):
             items.extend([('WHY THIS STEP WAS CHOSEN', 'label', 5), (day['why'], 'body', 12)])
-        items.extend([('YOUR MODERN PRACTICE', 'label', 5), (str(day.get('action') or 'No action was saved for this day.'), 'body', 12), ('PAUSE & REFLECT', 'label', 5), (str(day.get('reflection') or 'What did you notice today?'), 'body', 12), ('MAKE IT WORK FOR YOU', 'label', 5), (str(day.get('adaptation') or 'You may shorten this practice or pause and return later.'), 'body', 0)])
-        render(day['day']+2, f"Day {day['day']:02d} | Your saved daily practice", items)
+        items.extend([('YOUR MODERN PRACTICE', 'label', 5), (str(day.get('action') or 'No action was saved for this day.'), 'body', 12), ('PAUSE & REFLECT', 'label', 5), (str(day.get('reflection') or 'What did you notice today?'), 'body', 12), ('MAKE IT WORK FOR YOU', 'label', 5), (str(day.get('adaptation') or 'You may shorten this practice or pause and return later.'), 'body', 0 if dnum not in (3, 7, 14) else 8)])
+
+        mkey = f"day{dnum}"
+        if mkey in rec.get('milestones', {}):
+            m_text = rec['milestones'][mkey]
+            items.extend([
+                ('SACRED MILESTONE · DEEPENING IN THE TEXT', 'label', 4),
+                (f"Rabbi David's Note: For the sacred vessel-sealing formulas of Day {dnum:02d}, consult '{rec['title']}' ({m_text}).", 'note_box', 0)
+            ])
+
+        render(dnum+2, f"Day {dnum:02d} | Your saved daily practice", items)
 
     display_name = name if name and name.lower() != 'you' else 'Friend'
     goal_label = labels.get('goal')
@@ -301,13 +315,18 @@ def plan_pdf(data):
         "alone in your striving. May the Almighty watch over you and keep you. May light illuminate your path, and may peace, "
         "health, and true prosperity accompany every step you take."
     )
+    p_companion = (
+        f"For your continued journey beyond these fourteen days, I have designated '{rec['title']}' as your foundational companion. "
+        "Return to its teachings whenever you need to fortify your vessel against dissipation."
+    )
 
     page17_items = [
         ('A PASTORAL BLESSING FROM RABBI DAVID', 'label', 12),
         (f'Walking Forward in Peace & Blessing, {display_name}', 'title', 16),
-        (p1, 'body', 14),
-        (p2, 'body', 14),
-        (p3, 'body', 18),
+        (p1, 'body', 12),
+        (p2, 'body', 12),
+        (p3, 'body', 12),
+        (p_companion, 'small', 14),
         ('Rabbi David', 'signature', 3),
         ('Rav David ben-Avraham · Jerusalem', 'signature_sub', 10),
         ('May peace and blessing rest upon the work of your hands.', 'signature_bless', 0),

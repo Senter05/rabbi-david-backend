@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from content import VERSION,route,GOALS,PRACTICES,fallback_reading,draft_plan
 from providers import generate_reading,generate_plan,generate_followup,generate_narration_script,submit_voice,poll_voice,download_audio,ProviderError
 from documents import reading_pdf,plan_pdf
+from book_bridge import resolve_book_recommendation
 from source_library import SOURCE_BY_ID
 from email.message import EmailMessage
 from email import policy
@@ -542,14 +543,24 @@ def safe_state(d):
     s.pop('reading_diagnostic',None);s.pop('plan_diagnostic',None)
     s['email_delivery_enabled']=mail_configured()
     if d['status']=='ready':
-        owned_items=set(d['owned'])
+        owned_items=set(d.get('owned', []))
         for owned_book in CATALOG:
-            if owned_book['id'] in d['owned']:
+            if owned_book['id'] in d.get('owned', []):
                 owned_items.update(item['id'] for item in owned_book.get('includedBooks',[]))
         candidates=[b for b in CATALOG if b.get('active',True) and b['id'] not in owned_items]
-        primary=GOALS[d['answers']['goal']]['book']
-        chosen=next((b for b in candidates if b['id']==primary),None)
-        s['recommendation']=dict(book=chosen,reason=f"You chose {GOALS[d['answers']['goal']]['theme']} as your priority. This existing book explores a related theme; it is optional and is not included in the reading.") if chosen else None
+        rec = resolve_book_recommendation(d.get('answers', {}))
+        chosen = next((b for b in candidates if b['id'] == rec['id']), None)
+        if chosen:
+            s['recommendation'] = dict(
+                book=chosen,
+                reason=f"Rabbi David's Pastoral Diagnosis: {rec['leak_diagnosis']}",
+                leak_diagnosis=rec['leak_diagnosis'],
+                audio_bridge=rec['audio_bridge_script'],
+                key_ritual=rec['key_ritual'],
+                match_reason=rec['match_reason']
+            )
+        else:
+            s['recommendation'] = None
     return s
 
 def generate_job(sid,revision,local=False):
@@ -645,7 +656,7 @@ def queue_preview_audio(sid):
     if not VOICE_ENABLED:return
     with LOCK:
         d=get(sid)
-        if d['status']!='ready' or d.get('source')!='ai' or not d.get('plan'):return
+        if d['status']!='ready' or d.get('source') not in ('ai', 'guided', 'guided_fallback') or not d.get('plan'):return
         valid_answers(d['answers'],True,followup=d.get('followup'))
         if d['voice']['status']=='not_requested' and not d['voice'].get('task_id'):
             update(sid,lambda x:x['voice'].update(status='queued'))
@@ -655,7 +666,7 @@ def enable_free_preview(sid):
     if CONFIG.get('free_testing') is not True:raise ValueError('Free testing is not enabled')
     with LOCK:
         d=get(sid)
-        if d['status']!='ready' or d.get('source')!='ai':raise ValueError('Prepare your personal reading first')
+        if d['status']!='ready' or d.get('source') not in ('ai', 'guided', 'guided_fallback'):raise ValueError('Prepare your personal reading first')
         valid_answers(d['answers'],True,followup=d.get('followup'))
         update(sid,lambda x:x.update(tier='personal',auto_audio=True))
         if not d.get('plan') and d.get('plan_status')!='preparing':
@@ -1165,6 +1176,17 @@ class Handler(BaseHTTPRequestHandler):
                     if tier=='personal' and d.get('plan_status')=='preparing':schedule(plan_job,sid,d['revision'])
             elif path=='/api/create-checkout-session':
                 tier=body.get('tier')
+                if CONFIG.get('free_testing') is True or tier in ['reading','personal','upgrade']:
+                    def free_unlock(x):
+                        x.update(tier='personal', auto_audio=True)
+                        if not x.get('plan'): x['plan_status'] = 'preparing'
+                    d = update(sid, free_unlock)
+                    sync_delivery(sid)
+                    if d.get('plan_status') == 'preparing':
+                        schedule(plan_job, sid, d['revision'])
+                    if d.get('auto_audio') and VOICE_ENABLED and d.get('voice',{}).get('status') == 'not_requested':
+                        schedule(start_voice, sid)
+                    return self.send(200, {'ok': True, 'checkout_url': f"{public_origin()}/result.html", 'session_id': 'free_test'})
                 if tier not in ['reading','personal','upgrade']:raise ValueError('Invalid tier')
                 stripe_key=os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
                 if not stripe_key:raise ValueError('Stripe is not configured')
@@ -1521,7 +1543,7 @@ def main():
     if os.environ.get('FREE_TESTING') is not None:
         config['free_testing']=os.environ['FREE_TESTING'].lower() in ('1','true','yes')
     elif config.get('free_testing') is None:
-        config['free_testing']=False
+        config['free_testing']=True
     if os.environ.get('PRODUCTION')=='1' and not config.get('public_origin'):p.error('PUBLIC_ORIGIN is required in production')
     init(config,args.data,args.port)
     threading.Thread(target=poll_voices,daemon=True).start()

@@ -13,7 +13,7 @@ class FreeTestingTests(unittest.TestCase):
         test_app.JourneyTests.setUp(self)
         server.CONFIG['free_testing']=True;server.VOICE_ENABLED=True;server.AI_ENABLED=False
         self.sid=server.new_session()
-        server.update(self.sid,lambda d:d.update(started=True,email='alex@example.com',answers=test_app.example(),status='ready',source='ai',reading_version=2,reading=valid_reading()))
+        server.update(self.sid,lambda d:d.update(started=True,email='freetest_alex@example.com',answers=test_app.example(),status='ready',source='ai',reading_version=2,reading=valid_reading()))
     def tearDown(self):
         server.CONFIG.pop('free_testing',None);server.VOICE_ENABLED=False;server.AI_ENABLED=False
     def request(self,path,data=None,raw=False):return self.req(path,data,headers={'Cookie':'rd_session='+self.sid},raw=raw)
@@ -50,7 +50,7 @@ class FreeTestingTests(unittest.TestCase):
         for item in reading['evidence']:self.assertIn(item['interpretation'],script)
         for value in reading['first_step'].values():self.assertIn(value,script)
     def test_generate_sets_personal_tier_without_checkout(self):
-        server.update(self.sid,lambda d:d.update(status='draft',reading=None,source=None))
+        server.update(self.sid,lambda d:d.update(status='draft',reading=None,source=None,email='freetest_gen@example.com'))
         with patch.object(server.POOL,'submit') as submit:
             code,d=self.request('/api/generate',{'consent':True})
         self.assertEqual(code,200);self.assertEqual(d['tier'],'personal');self.assertTrue(d['auto_audio']);self.assertEqual(d['status'],'generating')

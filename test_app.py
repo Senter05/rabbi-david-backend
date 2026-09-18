@@ -1,4 +1,4 @@
-import unittest,tempfile,threading,urllib.request,urllib.error,http.cookiejar,json,time
+import unittest,tempfile,threading,urllib.request,urllib.error,http.cookiejar,json,time,secrets
 from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -27,16 +27,17 @@ class JourneyTests(unittest.TestCase):
             with (client or self.client).open(req,timeout=10) as r:status=r.status;content=r.read()
         except urllib.error.HTTPError as e:status=e.code;content=e.read()
         return status,content if raw else json.loads(content)
-    def ready(self,goal='calm'):
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'));self.req('/api/save',dict(answers=example(goal),step=12));self.req('/api/generate',dict(consent=True))
+    def ready(self,goal='calm',email=None):
+        email=email or f"alex_{secrets.token_hex(4)}@example.com"
+        self.req('/api/enroll',dict(name='Alex',email=email,password='FixturePassword123'));self.req('/api/save',dict(answers=example(goal),step=12));self.req('/api/generate',dict(consent=True))
         for _ in range(100):
             status,d=self.req('/api/state')
             if d['status']!='generating':return d
             time.sleep(.02)
         self.fail('generation did not finish')
     def test_complete_journey_and_no_repeat(self):
-        d=self.ready();self.assertEqual(d['status'],'ready');self.assertEqual(len(d['reading']['sections']),1);self.assertIsNone(d['plan']);answers=d['answers']
-        self.req('/api/contact',dict(email='alex@example.com',marketing=True))
+        d=self.ready(email='journey@example.com');self.assertEqual(d['status'],'ready');self.assertEqual(len(d['reading']['sections']),1);self.assertIsNone(d['plan']);answers=d['answers']
+        self.req('/api/contact',dict(email='journey@example.com',marketing=True))
         code,d=self.req('/api/demo-tier',dict(tier='reading'));self.assertEqual(code,200);self.assertEqual(len(d['reading']['sections']),4)
         self.req('/api/demo-tier',dict(tier='personal'))
         for _ in range(100):
@@ -49,23 +50,23 @@ class JourneyTests(unittest.TestCase):
         Path(self.tmp.name,'test-reading.pdf').write_bytes(pdf)
         _,mails=self.req('/api/inbox');self.assertEqual(len([m for m in mails if m['kind'].startswith('followup')]),2)
         self.req('/api/demo-tier',dict(tier='personal'));_,after=self.req('/api/inbox');self.assertEqual(len(after),len(mails))
-        self.req('/api/contact',dict(email='alex@example.com',marketing=False));_,mails=self.req('/api/inbox');self.assertFalse(any(m['kind'].startswith('followup') for m in mails))
+        self.req('/api/contact',dict(email='journey@example.com',marketing=False));_,mails=self.req('/api/inbox');self.assertFalse(any(m['kind'].startswith('followup') for m in mails))
     def test_session_isolation_and_full_content_gate(self):
-        self.ready();self.req('/api/demo-tier',dict(tier='reading'))
+        self.ready(email='isolation@example.com');self.req('/api/demo-tier',dict(tier='reading'))
         other=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         _,d=self.req('/api/state',client=other);self.assertIsNone(d['reading']);self.assertEqual(d['tier'],'free')
         self.assertEqual(self.req('/api/audio',client=other)[0],404);self.assertEqual(self.req('/api/transcript',client=other)[0],403)
         self.req('/api/new',{});_,d=self.req('/api/state');self.assertIsNone(d['reading'])
 
     def test_corrected_delivery_address_updates_local_outbox(self):
-        self.ready()
+        self.ready(email='outbox_init@example.com')
         self.req('/api/contact',dict(email='corrected@example.com',marketing=True))
         _,messages=self.req('/api/inbox')
         self.assertTrue(messages)
         self.assertTrue(all(m['recipient']=='corrected@example.com' for m in messages))
 
     def test_random_text_rejected_and_existing_answer_can_be_corrected(self):
-        d=self.ready();answers=d['answers'].copy();answers['note']='sdfjshfjksd'
+        d=self.ready(email='corrupt@example.com');answers=d['answers'].copy();answers['note']='sdfjshfjksd'
         self.assertEqual(self.req('/api/save',dict(answers=answers,step=11))[0],400)
         with server.connection() as con:
             sid=con.execute('SELECT id FROM sessions ORDER BY updated DESC LIMIT 1').fetchone()['id']
@@ -75,13 +76,13 @@ class JourneyTests(unittest.TestCase):
         self.assertEqual(self.req('/api/demo-tier',dict(tier='reading'))[0],400)
         self.assertEqual(self.req('/api/save',dict(answers=d['answers'],step=11))[0],400)
         self.req('/api/new',{})
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'))
+        self.req('/api/enroll',dict(name='Alex',email='clean_after_corrupt@example.com',password='FixturePassword123'))
         answers=example();answers['note']=''
         code,corrected=self.req('/api/save',dict(answers=answers,step=12))
         self.assertEqual(code,200);self.assertEqual(corrected['answer_issues'],[])
         self.assertEqual(corrected['status'],'draft')
     def test_invalid_answers_consent_and_csrf(self):
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'));a=example();a['goal']='invented';self.assertEqual(self.req('/api/save',dict(answers=a))[0],400)
+        self.req('/api/enroll',dict(name='Alex',email='csrf_test@example.com',password='FixturePassword123'));a=example();a['goal']='invented';self.assertEqual(self.req('/api/save',dict(answers=a))[0],400)
         self.assertEqual(self.req('/api/generate',dict(consent=True))[0],400)
         self.req('/api/save',dict(answers=example(),step=12));self.assertEqual(self.req('/api/generate',dict(consent=False))[0],400)
         self.assertEqual(self.req('/api/new',{},headers={'Origin':'https://untrusted.example'})[0],403)
@@ -90,10 +91,10 @@ class JourneyTests(unittest.TestCase):
         calm=route(example('calm'));legacy=route(example('legacy'))
         self.assertNotEqual(calm[2]['title'],legacy[2]['title']);self.assertEqual(len(calm),12)
         a=example();a['obstacle']='none';self.assertEqual(len(route(a)),11)
-        d=self.ready('legacy');self.assertEqual(d['recommendation']['book']['id'],'legacy')
+        d=self.ready('legacy',email='legacy_test@example.com');self.assertEqual(d['recommendation']['book']['id'],'legacy')
         _,d=self.req('/api/owned',dict(owned=['legacy']));self.assertIsNone(d['recommendation'])
     def test_recovery_one_use(self):
-        self.ready();self.req('/api/contact',dict(email='recover@example.com',marketing=False));self.req('/api/recover',dict(email='recover@example.com'))
+        self.ready(email='recover_ready@example.com');self.req('/api/contact',dict(email='recover@example.com',marketing=False));self.req('/api/recover',dict(email='recover@example.com'))
         _,mails=self.req('/api/inbox');message=next(m for m in mails if m['kind']=='access')
         link=next(line.strip() for line in message['body'].splitlines() if line.strip().startswith(server.public_origin()+'/access?token='))
         parsed=urllib.parse.urlsplit(link)
@@ -108,7 +109,7 @@ class JourneyTests(unittest.TestCase):
         code,body=self.req('/css/style.css',raw=True);self.assertEqual(code,200);self.assertGreater(len(body),1000)
 
     def test_optional_followup_survives_and_invalidates(self):
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'));a=example();self.req('/api/save',dict(answers=a,step=12))
+        self.req('/api/enroll',dict(name='Alex',email='followup_test@example.com',password='FixturePassword123'));a=example();self.req('/api/save',dict(answers=a,step=12))
         self.assertEqual(self.req('/api/followup',dict(consent=False))[0],400)
         _,d=self.req('/api/followup',dict(consent=True));self.assertEqual(len(d['questions']),13)
         a['personal_detail']='An unhurried cup of tea and one page in my notebook.'
@@ -117,17 +118,20 @@ class JourneyTests(unittest.TestCase):
         a['obstacle']='none';_,d=self.req('/api/save',dict(answers=a,step=11))
         self.assertNotIn('followup',d);self.assertNotIn('personal_detail',d['answers'])
 
-    def test_completed_test_requires_new_session_to_change_answers(self):
-        before=self.ready()
+    def test_completed_test_blocks_duplicate_generation_for_same_email(self):
+        before=self.ready(email='single_gen@example.com')
         a=example();a['time']='10'
         self.assertEqual(self.req('/api/save',dict(answers=a,step=12))[0],400)
         _,current=self.req('/api/state');self.assertEqual(current['answers'],before['answers'])
-        self.req('/api/new',{});self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'))
-        self.assertEqual(self.req('/api/save',dict(answers=a,step=12))[0],200)
-        _,current=self.req('/api/state');self.assertEqual(current['answers']['time'],'10')
+        self.req('/api/new',{})
+        self.req('/api/enroll',dict(name='Alex',email='single_gen@example.com',password='FixturePassword123'))
+        self.req('/api/save',dict(answers=a,step=12))
+        code,err=self.req('/api/generate',dict(consent=True))
+        self.assertEqual(code,400)
+        self.assertIn('already generated a personal test',err.get('error',''))
 
     def test_voice_duplicate_clicks_only_submit_once(self):
-        self.ready();self.req('/api/demo-tier',dict(tier='personal'))
+        self.ready(email='voice_user@example.com');self.req('/api/demo-tier',dict(tier='personal'))
         for _ in range(100):
             _,d=self.req('/api/state')
             if d.get('plan'):break
@@ -151,24 +155,24 @@ class JourneyTests(unittest.TestCase):
             self.assertEqual(self.req(path,data)[0],403)
         for name,email in [('', 'a@example.com'),('Alex',''),('Alex','x@'),('Alex','a..b@example.com'),('<img>','a@example.com'),('123','a@example.com')]:
             self.assertEqual(self.req('/api/enroll',dict(name=name,email=email,password='FixturePassword123'))[0],400)
-        code,d=self.req('/api/enroll',dict(name=' Alex ',email='ALEX@EXAMPLE.COM',password='FixturePassword123'))
-        self.assertEqual(code,200);self.assertTrue(d['started']);self.assertEqual(d['email'],'alex@example.com');self.assertFalse(d['marketing'])
+        code,d=self.req('/api/enroll',dict(name=' Alex ',email='ALEX_ID@EXAMPLE.COM',password='FixturePassword123'))
+        self.assertEqual(code,200);self.assertTrue(d['started']);self.assertEqual(d['email'],'alex_id@example.com');self.assertFalse(d['marketing'])
         self.assertEqual(d['answers']['name'],'Alex')
         self.assertEqual(self.req('/api/save',dict(answers={'name':''}))[0],400)
         _,d=self.req('/api/enroll',dict(name='Other',email='other@example.com',password='FixturePassword123'))
-        self.assertEqual(d['email'],'alex@example.com')
+        self.assertEqual(d['email'],'alex_id@example.com')
         self.req('/api/new',{})
         self.assertEqual(self.req('/api/save',dict(answers=example()))[0],403)
 
     def test_double_generate_and_upgrade_do_not_duplicate_jobs(self):
-        self.req('/api/enroll',dict(name='Alex',email='alex@example.com',password='FixturePassword123'))
+        self.req('/api/enroll',dict(name='Alex',email='double_test@example.com',password='FixturePassword123'))
         self.req('/api/save',dict(answers=example(),step=12))
         with patch.object(server.POOL,'submit') as submit:
             with ThreadPoolExecutor(max_workers=4) as pool:
                 results=list(pool.map(lambda _:self.req('/api/generate',dict(consent=True)),range(4)))
             self.assertTrue(all(code==200 for code,_ in results));self.assertEqual(submit.call_count,1)
         # A fresh completed reflection permits precisely one plan job.
-        self.req('/api/new',{});self.ready()
+        self.req('/api/new',{});self.ready(email='second_ready@example.com')
         with patch.object(server.POOL,'submit') as submit:
             with ThreadPoolExecutor(max_workers=4) as pool:
                 results=list(pool.map(lambda _:self.req('/api/demo-tier',dict(tier='personal')),range(4)))

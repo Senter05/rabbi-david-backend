@@ -209,11 +209,6 @@
       });
     });
 
-    $('btnNewReading')?.addEventListener('click', () => action(async () => {
-      await api('new', {});
-      location.href = 'quiz.html';
-    }));
-
     $('signOutBtn').addEventListener('click', () => action(async () => {
       await api('auth/logout', {});
       render({ user: null, readings: [] });

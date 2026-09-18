@@ -211,6 +211,32 @@ def get_user_readings_list(user_id):
             })
     return readings
 
+def find_completed_test(user_id=None, email=None, exclude_sid=None):
+    if email:
+        email = email.strip().lower()
+    with connection() as con:
+        if user_id:
+            rows = con.execute('SELECT id, data, user_id FROM sessions WHERE user_id=? ORDER BY updated DESC', (user_id,)).fetchall()
+        elif email:
+            rows = con.execute('SELECT id, data, user_id FROM sessions ORDER BY updated DESC').fetchall()
+        else:
+            return None, None
+        for r in rows:
+            if exclude_sid and r['id'] == exclude_sid:
+                continue
+            try:
+                d = json.loads(r['data'])
+            except Exception:
+                continue
+            d_email = d.get('email', '').strip().lower()
+            row_uid = r['user_id'] if 'user_id' in r.keys() else None
+            if email and d_email != email:
+                if not (user_id and row_uid == user_id):
+                    continue
+            if d.get('status') in ('ready', 'generating') or d.get('reading') or d.get('plan'):
+                return r['id'], d
+    return None, None
+
 def send_auth_mail(recipient,subject,body,kind='auth'):
     mid=secrets.token_hex(16)
     with connection() as con:
@@ -1087,15 +1113,15 @@ class Handler(BaseHTTPRequestHandler):
                 d=update(sid,enroll);event(sid,'test_started');sync_delivery(sid)
                 if user_id:link_user_sessions(user_id,email,sid)
             elif path=='/api/save':
-                if d.get('reading') or d['status']=='ready':raise ValueError('This test is complete. Start a new test to change your answers.')
+                if d.get('reading') or d['status']=='ready':raise ValueError('This test is complete. Answers cannot be changed.')
                 if d['status']=='generating':raise ValueError('Please wait for your reading before editing')
-                if d.get('voice',{}).get('status') in ['queued','submitting','processing','download_pending']:raise ValueError('Please wait for the audio to finish before editing these answers. You can start a separate reflection instead.')
+                if d.get('voice',{}).get('status') in ['queued','submitting','processing','download_pending']:raise ValueError('Please wait for the audio to finish before editing these answers.')
                 if d.get('intro',{}).get('status') in ['queued','submitting','processing','download_pending']:raise ValueError('Please wait for the welcome to finish before editing these answers.')
                 a=valid_answers(body.get('answers',{}),followup=d.get('followup'),unchanged=d['answers']);step=body.get('step',0)
                 valid_identity(a.get('name'),d['email'])
                 if type(step)!=int or not 0<=step<=15:raise ValueError('Invalid step')
                 def save(x):
-                    if x.get('reading') or x['status']=='ready':raise ValueError('This test is complete. Start a new test to change your answers.')
+                    if x.get('reading') or x['status']=='ready':raise ValueError('This test is complete. Answers cannot be changed.')
                     if x['status']=='generating':raise ValueError('Please wait for your reading before editing')
                     base=lambda values:{k:v for k,v in values.items() if k not in ['name','personal_detail']}
                     if x.get('followup') and base(a)!=base(x['answers']):x.pop('followup',None);a.pop('personal_detail',None)
@@ -1126,6 +1152,9 @@ class Handler(BaseHTTPRequestHandler):
                 if d['status']=='ready' and not refreshing:
                     valid_answers(d['answers'],True,followup=d.get('followup'))
                     return self.send(obj=safe_state(d))
+                comp_sid, _ = find_completed_test(user_id=d.get('user_id'), email=d.get('email'), exclude_sid=sid)
+                if comp_sid:
+                    raise ValueError('This email address has already generated a personal test. Each email is limited to one test.')
                 if refreshing and any(d.get(k,{}).get('status') in ['queued','submitting','processing','download_pending'] for k in ('voice','intro')):raise ValueError('Please wait for your audio to finish before updating the reading')
                 valid_answers(d['answers'],True,followup=d.get('followup'))
                 if body.get('consent') is not True:raise ValueError('Please confirm that we may use your answers to prepare your reading')
@@ -1133,6 +1162,9 @@ class Handler(BaseHTTPRequestHandler):
                     current=get(sid)
                     refreshing=body.get('refresh') is True and (current.get('source')!='ai' or current.get('reading_version',0)<3)
                     if current['status']=='generating' or (current['status']=='ready' and not refreshing):return self.send(obj=safe_state(current))
+                    comp_sid, _ = find_completed_test(user_id=current.get('user_id'), email=current.get('email'), exclude_sid=sid)
+                    if comp_sid:
+                        raise ValueError('This email address has already generated a personal test. Each email is limited to one test.')
                     valid_answers(current['answers'],True,followup=current.get('followup'))
                     def begin(x):
                         x.update(status='generating',revision=x['revision']+1,error=None,consent_at=time.time(),generation_started_at=time.time(),reading_diagnostic=None,generation_progress=dict(completed=0,total=5))
@@ -1266,7 +1298,7 @@ class Handler(BaseHTTPRequestHandler):
                     current=get(sid)
                     if current['tier']!='personal' or current['status']!='ready':raise ValueError('Complete your personal reading first.')
                     if current.get('plan_status')=='preparing' or (current.get('plan_source')=='ai' and current.get('plan_version',0)>=2):return self.send(obj=safe_state(current))
-                    if current.get('completed_days'):raise ValueError('Keep the plan you have started, or begin a new test for a new plan.')
+                    if current.get('completed_days'):raise ValueError('Keep the plan you have started.')
                     valid_answers(current['answers'],True,followup=current.get('followup'))
                     d=update(sid,lambda x:x.update(plan_status='preparing',plan_delivery_error=None))
                     schedule(plan_job,sid,d['revision'])

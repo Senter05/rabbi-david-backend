@@ -58,5 +58,28 @@ class EbookCatalogTests(unittest.TestCase):
             path = ROOT / 'public' / 'download' / page
             self.assertTrue(path.is_file(), f"Download page {path} must exist")
 
+    def test_all_ebooks_are_full_unabridged_editions(self):
+        import pypdf
+        min_pages = {
+            'The-Rabbis-Morning-Wealth-Blessing.pdf': 200,
+            'The-7-Jewish-Money-Rituals.pdf': 35,
+            'The-Complete-Rabbis-Wealth-System.pdf': 200,
+            'Generational-Wealth-The-Torah-Method.pdf': 200,
+            'The-Torah-CEO-Code.pdf': 140,
+            'The-Jewish-Wealth-Protection-Code.pdf': 150
+        }
+        for filename, expected_min in min_pages.items():
+            for folder in [ROOT / 'ebooks', ROOT / 'public' / 'pdf']:
+                file_path = folder / filename
+                self.assertTrue(file_path.is_file(), f"{file_path} must exist")
+                self.assertGreaterEqual(file_path.stat().st_size, 75000, f"{file_path} is suspiciously small ({file_path.stat().st_size} bytes)")
+                
+                reader = pypdf.PdfReader(str(file_path))
+                page_count = len(reader.pages)
+                self.assertGreaterEqual(page_count, expected_min, f"{file_path} has only {page_count} pages, expected at least {expected_min}")
+                
+                first_page = reader.pages[0].extract_text()
+                self.assertNotIn("EXECUTIVE SUMMARY", first_page.upper(), f"{file_path} contains 'EXECUTIVE SUMMARY' - must be unabridged book!")
+
 if __name__ == '__main__':
     unittest.main()

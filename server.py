@@ -449,6 +449,10 @@ def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, curre
         ebooks_dir = ROOT / 'public' / 'pdf'
     for filename in info['files']:
         pdf_path = ebooks_dir / filename
+        if not pdf_path.is_file() or pdf_path.stat().st_size < 75000:
+            alt_path = (ROOT / 'public' / 'pdf' / filename) if ebooks_dir != (ROOT / 'public' / 'pdf') else (ROOT / 'ebooks' / filename)
+            if alt_path.is_file() and alt_path.stat().st_size >= 75000:
+                pdf_path = alt_path
         if pdf_path.is_file():
             message.add_attachment(
                 pdf_path.read_bytes(),

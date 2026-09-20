@@ -396,6 +396,15 @@ EBOOK_DELIVERY = {
 }
 
 def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, currency='usd'):
+    aliases = {
+        'bundle': 'bundle_all',
+        'bundle-all': 'bundle_all',
+        'morning-blessing': 'morning',
+        'generational-wealth': 'legacy',
+        'torah-ceo-code': 'ceo'
+    }
+    if book_id in aliases:
+        book_id = aliases[book_id]
     if not book_id or book_id not in EBOOK_DELIVERY:
         amount_map = {
             2200: 'morning', 2700: 'morning',
@@ -403,23 +412,36 @@ def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, curre
             12000: 'complete', 15000: 'complete',
             6200: 'legacy', 7700: 'legacy',
             4600: 'ceo',
-            4900: 'protection',
+            4900: 'protection', 17000: 'protection',
             20000: 'bundle_all'
         }
         book_id = amount_map.get(amount, 'bundle_all' if amount >= 20000 else ('complete' if amount >= 12000 else 'rituals'))
     info = EBOOK_DELIVERY[book_id]
     message = EmailMessage()
     message['To'] = email
-    sender = CONFIG.get('mail_from') or 'Rabbi David <david@rabbidavid.org>'
+    sender = CONFIG.get('mail_from') or 'Rabbi David <delivery@rabbidavid.org>'
     message['From'] = sender
-    message['Subject'] = f"Rabbi David | Your book: {info['title']}"
     message['Reply-To'] = CONFIG.get('reply_to') or CONFIG.get('support_email') or 'sentercompanyls@gmail.com'
-    body = (
-        f"Shalom {name},\n\nThank you for your order. Your digital book, {info['title']}, is ready.\n\n"
-        f"Download your materials here:\n\n{info['url']}\n\n"
-        "Any attached PDFs are also yours to keep. Need help? Contact sentercompanyls@gmail.com.\n\n"
-        "With warmth,\nThe Rabbi David Team\nSenter Company LLC"
-    )
+    is_bundle = len(info.get('files', [])) > 1
+    if is_bundle:
+        message['Subject'] = f"Rabbi David | Your Complete Collection: {info['title']}"
+        file_bullets = "\n".join(f"• {f.replace('-', ' ').replace('.pdf', '')}" for f in info['files'])
+        body = (
+            f"Shalom {name},\n\nThank you for your order. Your bundle, {info['title']}, is ready.\n\n"
+            f"All {len(info['files'])} volumes have been attached directly to this email for you to keep:\n\n"
+            f"{file_bullets}\n\n"
+            f"You can also download and access all materials here at any time:\n\n{info['url']}\n\n"
+            "Any attached PDFs are yours to keep permanently. Need help? Contact sentercompanyls@gmail.com.\n\n"
+            "With warmth,\nThe Rabbi David Team\nSenter Company LLC"
+        )
+    else:
+        message['Subject'] = f"Rabbi David | Your book: {info['title']}"
+        body = (
+            f"Shalom {name},\n\nThank you for your order. Your digital book, {info['title']}, is ready.\n\n"
+            f"Download your materials here:\n\n{info['url']}\n\n"
+            "Any attached PDFs are also yours to keep. Need help? Contact sentercompanyls@gmail.com.\n\n"
+            "With warmth,\nThe Rabbi David Team\nSenter Company LLC"
+        )
     message.set_content(body)
     add_email_html(message,'ebook','https://rabbidavid.org')
     ebooks_dir = ROOT / 'ebooks'
@@ -1016,12 +1038,23 @@ class Handler(BaseHTTPRequestHandler):
                 email=customer_details.get('email') or session.get('customer_email') or ''
                 name=customer_details.get('name') or 'Valued Reader'
                 metadata=session.get('metadata') or {}
-                book_id=metadata.get('book_id','')
+                book_id=metadata.get('book_id') or metadata.get('key','')
                 tier=metadata.get('tier','')
                 amount=session.get('amount_total',0)
                 currency=session.get('currency','usd')
                 order_id='ord_'+(session_id if session_id else hashlib.sha256(raw).hexdigest()[:16])
-                if book_id and email:
+                if not book_id and not tier and email:
+                    amount_map = {
+                        2200: 'morning', 2700: 'morning',
+                        3200: 'rituals',
+                        12000: 'complete', 15000: 'complete',
+                        6200: 'legacy', 7700: 'legacy',
+                        4600: 'ceo',
+                        4900: 'protection', 17000: 'protection',
+                        20000: 'bundle_all'
+                    }
+                    book_id = amount_map.get(amount)
+                if (book_id or not tier) and email:
                     deliver_ebook(order_id,email,name,book_id,session_id=session_id,amount=amount,currency=currency)
                 elif tier:
                     apply_tier_purchase(order_id,session_id,email,name,tier,amount=amount,currency=currency,metadata=metadata)

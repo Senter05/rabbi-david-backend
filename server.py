@@ -4,7 +4,7 @@ from http.cookies import SimpleCookie
 from reading_access import reading_view
 from input_validation import validate_contact_email,validate_written_answer
 from pathlib import Path
-import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os,base64
+import argparse,json,sqlite3,secrets,time,threading,urllib.parse,mimetypes,hashlib,re,copy,os,base64,hmac
 from operations import BoundedExecutor, CapacityError, origins, reserve, ProviderBudget
 import providers
 from contextlib import contextmanager
@@ -394,6 +394,110 @@ EBOOK_DELIVERY = {
         'url': 'https://rabbidavid.org/download/all-access.html'
     }
 }
+
+OFFER_STRIPE_PRICES = {
+    'legacy': ('price_1ULpxDQPUFXetkqGUJTb5kLA', 3200, "The Generational Vault — Rabbi David", '/download/generational-wealth.html'),
+    'protection': ('price_1ULpxEQPUFXetkqGvGXhXYJM', 3200, "The Jewish Shield Against Financial Ruin — Rabbi David", '/download/protection.html'),
+    'ceo': ('price_1ULpxFQPUFXetkqG7I6XUlrX', 3200, "Ancient Jewish Rules for Commercial Dominance — Rabbi David", '/download/torah-ceo-code.html'),
+    'rituals': ('price_1ULpxFQPUFXetkqGGQWWEA66', 1200, "The 7 Hidden Money Rituals of Secret Jewish Dynasties — Rabbi David", '/download/rituals.html'),
+    'morning': ('price_1ULpxHQPUFXetkqGmZFXRna7', 1200, "The Rabbi's Morning Wealth Blessing — Rabbi David", '/download/morning-blessing.html'),
+    'complete': ('price_1ULpxIQPUFXetkqGNRkOLTYK', 6700, "The Master Kabbalah Wealth System: The 30-Day Financial Vault — Rabbi David", '/download/complete.html'),
+    'bundle_all': ('price_1ULpxIQPUFXetkqGPF3jgXVM', 9700, "The Complete 6-Ebook Master Collection — Rabbi David", '/download/all-access.html')
+}
+
+OFFER_HMAC_SECRET = 'rd_reading_room_hmac_sec_2026_10_9f8e7d6c5b4a'
+
+def make_offer_token(email: str, expires_at: int) -> str:
+    email_clean = email.strip().lower()
+    payload = f"{email_clean}|{int(expires_at)}"
+    secret = os.environ.get('OFFER_HMAC_SECRET') or CONFIG.get('offer_hmac_secret') or OFFER_HMAC_SECRET
+    sig = hmac.new(secret.encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()
+    raw = f"{payload}|{sig}".encode('utf-8')
+    return base64.urlsafe_b64encode(raw).decode('ascii').rstrip('=')
+
+def verify_offer_token(token: str):
+    if not token:
+        return False, None, 0, 'missing_token'
+    try:
+        padded = token + '=' * (-len(token) % 4)
+        decoded = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
+        parts = decoded.split('|')
+        if len(parts) != 3:
+            return False, None, 0, 'malformed_token'
+        email, exp_str, sig = parts
+        email_clean = email.strip().lower()
+        exp = int(exp_str)
+        secret = os.environ.get('OFFER_HMAC_SECRET') or CONFIG.get('offer_hmac_secret') or OFFER_HMAC_SECRET
+        expected_sig = hmac.new(secret.encode('utf-8'), f"{email_clean}|{exp}".encode('utf-8'), hashlib.sha256).hexdigest()
+        if not secrets.compare_digest(sig, expected_sig):
+            return False, None, 0, 'invalid_signature'
+        if time.time() > exp:
+            return False, email_clean, exp, 'expired'
+        return True, email_clean, exp, None
+    except Exception as ex:
+        return False, None, 0, f'exception: {ex}'
+
+RECIPIENTS_LOOKUP_CACHE = None
+
+def lookup_recipient_info(email: str):
+    global RECIPIENTS_LOOKUP_CACHE
+    email_clean = email.strip().lower()
+    if RECIPIENTS_LOOKUP_CACHE is None:
+        lookup_path = ROOT / 'data' / 'recipients_lookup.json'
+        if lookup_path.is_file():
+            try:
+                RECIPIENTS_LOOKUP_CACHE = json.loads(lookup_path.read_text(encoding='utf-8'))
+            except Exception:
+                RECIPIENTS_LOOKUP_CACHE = {}
+        else:
+            RECIPIENTS_LOOKUP_CACHE = {}
+            
+    info = RECIPIENTS_LOOKUP_CACHE.get(email_clean) or {}
+    first_name = info.get('first_name', '')
+    owned = set(info.get('owned', []))
+    
+    if not first_name:
+        user = get_user_by_email(email_clean)
+        if user and user.get('name'):
+            words = re.findall(r"[A-Za-zÀ-ÿ]+", user['name'])
+            if words and len(words[0]) >= 2:
+                first_name = words[0].capitalize()
+                
+    try:
+        with connection() as con:
+            rows = con.execute('SELECT book_id FROM orders WHERE lower(email)=?', (email_clean,)).fetchall()
+            for r in rows:
+                bid = r['book_id']
+                if bid == 'bundle_all':
+                    owned.update(['bundle_all', 'complete', 'morning', 'rituals', 'ceo', 'legacy', 'protection'])
+                elif bid == 'complete':
+                    owned.update(['complete', 'morning', 'rituals'])
+                elif bid:
+                    owned.add(bid)
+    except Exception:
+        pass
+        
+    if SUPABASE and SUPABASE.is_configured():
+        try:
+            res = SUPABASE._request(f"/rest/v1/orders?email=eq.{urllib.parse.quote(email_clean)}&select=book_id", method='GET', use_service_key=True)
+            if res.get('status') == 200 and res.get('data'):
+                for o in res['data']:
+                    bid = o.get('book_id')
+                    if bid == 'bundle_all':
+                        owned.update(['bundle_all', 'complete', 'morning', 'rituals', 'ceo', 'legacy', 'protection'])
+                    elif bid == 'complete':
+                        owned.update(['complete', 'morning', 'rituals'])
+                    elif bid:
+                        owned.add(bid)
+        except Exception:
+            pass
+            
+    if 'bundle_all' in owned:
+        owned.update(['bundle_all', 'complete', 'morning', 'rituals', 'ceo', 'legacy', 'protection'])
+    elif 'complete' in owned:
+        owned.update(['complete', 'morning', 'rituals'])
+        
+    return {'first_name': first_name, 'owned': sorted(list(owned))}
 
 def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, currency='usd'):
     aliases = {
@@ -1023,12 +1127,106 @@ class Handler(BaseHTTPRequestHandler):
                     update(self.new_cookie,init_user_session)
                     link_user_sessions(curr['id'],curr['email'],self.new_cookie)
                 return self.send(obj=safe_state(get(self.new_cookie)))
+            if path in ('/reading-room', '/reading-room.html'):
+                return self.handle_reading_room(u)
+            if path == '/api/reading-room-data':
+                return self.handle_reading_room_data(u)
             if path.startswith('/api/'):return self.send(404,{'error':'Not found'})
             if path=='/':path='/index.html'
             f=(ROOT/'public'/urllib.parse.unquote(path.lstrip('/'))).resolve()
             if not f.is_relative_to((ROOT/'public').resolve()) or not f.is_file():return self.send(404,{'error':'Not found'})
             return self.send_file(f)
         except Exception:return self.send(500,{'error':'Something could not be loaded. Please try again.'})
+    def handle_reading_room(self, u):
+        qs = urllib.parse.parse_qs(u.query)
+        token = qs.get('t', [''])[0]
+        is_valid, email, exp, err = verify_offer_token(token)
+        file_path = (ROOT / 'public' / 'reading-room.html').resolve()
+        if not file_path.is_file():
+            return self.send(404, {'error': 'Reading room file not found'})
+        html = file_path.read_text(encoding='utf-8')
+        if not is_valid:
+            html = html.replace('<body>', '<body class="is-closed">')
+            inject = f"<script>window.__READING_ROOM_DATA = {{ valid: false, reason: {json.dumps(err)} }};</script>"
+            html = html.replace('</head>', f'{inject}\n</head>')
+            return self.send(200, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
+        user_info = lookup_recipient_info(email)
+        first_name = user_info.get('first_name', '')
+        owned_books = user_info.get('owned', [])
+        display_name = first_name if first_name else 'friend'
+        html = html.replace('<span data-first-name>friend</span>', f'<span data-first-name>{display_name}</span>')
+        inject = f"""<script>
+window.__READING_ROOM_DATA = {{
+    valid: true,
+    email: {json.dumps(email)},
+    first_name: {json.dumps(first_name)},
+    expires_at: {exp * 1000},
+    owned: {json.dumps(owned_books)}
+}};
+</script>"""
+        html = html.replace('</head>', f'{inject}\n</head>')
+        return self.send(200, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
+    def handle_reading_room_data(self, u):
+        qs = urllib.parse.parse_qs(u.query)
+        token = qs.get('t', [''])[0]
+        is_valid, email, exp, err = verify_offer_token(token)
+        if not is_valid:
+            return self.send(410, {'ok': False, 'valid': False, 'error': 'This reading room has closed', 'reason': err})
+        user_info = lookup_recipient_info(email)
+        return self.send(200, {
+            'ok': True,
+            'valid': True,
+            'email': email,
+            'first_name': user_info.get('first_name', ''),
+            'expires_at': exp * 1000,
+            'owned': user_info.get('owned', [])
+        })
+    def handle_create_offer_checkout(self, body):
+        token = body.get('t', '')
+        book_id = body.get('book_id', '')
+        is_valid, email, exp, err = verify_offer_token(token)
+        if not is_valid:
+            return self.send(410, {'ok': False, 'error': 'This reading room has closed', 'reason': err})
+        if book_id not in OFFER_STRIPE_PRICES:
+            return self.send(400, {'ok': False, 'error': f'Unknown offer book: {book_id}'})
+        price_id, unit_amount, prod_name, download_path = OFFER_STRIPE_PRICES[book_id]
+        stripe_key = os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
+        if not stripe_key:
+            return self.send(500, {'ok': False, 'error': 'Payment service is not configured'})
+        origin = public_origin()
+        success_url = f"{origin}{download_path}?checkout_session_id={{CHECKOUT_SESSION_ID}}&paid=true"
+        cancel_url = f"{origin}/reading-room?t={urllib.parse.quote(token)}"
+        params = {
+            'payment_method_types[]': 'card',
+            'mode': 'payment',
+            'success_url': success_url,
+            'cancel_url': cancel_url,
+            'line_items[0][price]': price_id,
+            'line_items[0][quantity]': '1',
+            'customer_email': email,
+            'metadata[campaign]': 'reading_room_2026_10',
+            'metadata[book_id]': book_id,
+        }
+        now_ts = int(time.time())
+        if exp >= now_ts + 1800:
+            params['expires_at'] = str(min(exp, now_ts + 86400))
+        data = urllib.parse.urlencode(params).encode('utf-8')
+        req = urllib.request.Request(
+            'https://api.stripe.com/v1/checkout/sessions',
+            data=data,
+            headers={'Authorization': f'Bearer {stripe_key}'}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                cs_data = json.loads(r.read())
+            return self.send(200, {'ok': True, 'checkout_url': cs_data.get('url'), 'session_id': cs_data.get('id')})
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode('utf-8', errors='ignore')
+            print(f"[STRIPE OFFER CHECKOUT ERROR] {he.code}: {err_body}", flush=True)
+            return self.send(500, {'ok': False, 'error': 'Failed to initiate checkout session'})
+        except Exception as ex:
+            print(f"[STRIPE OFFER CHECKOUT ERROR] {ex}", flush=True)
+            return self.send(500, {'ok': False, 'error': 'Payment gateway connection error'})
     def handle_stripe_webhook(self):
         try:
             length=int(self.headers.get('Content-Length','0'))
@@ -1328,6 +1526,8 @@ class Handler(BaseHTTPRequestHandler):
                 with urllib.request.urlopen(req,timeout=15) as r:
                     cs_data=json.loads(r.read())
                 return self.send(200,{'ok':True,'checkout_url':cs_data.get('url'),'session_id':cs_data.get('id')})
+            elif path=='/api/create-offer-checkout':
+                return self.handle_create_offer_checkout(body)
             elif path=='/api/plan-retry':
                 if body.get('consent') is not True:raise ValueError('Please confirm preparation of your detailed plan.')
                 if not AI_ENABLED:raise ValueError('Personal plan generation is not connected.')

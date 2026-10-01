@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>The Private Reading Room · Rabbi David</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1d1a16; --muted:#6b6157; --paper:#f7f2e8; --card:#fffdf8; --line:#e4d9c4;
+  --gold:#a8812f; --gold-soft:#f1e6cc; --navy:#18233a; --ok:#2f6b4a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.serif{font-family:"Cormorant Garamond",Georgia,serif}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+
+/* bar */
+.bar{background:var(--navy);color:#f3ead7;text-align:center;font-size:14px;padding:10px 16px;position:sticky;top:0;z-index:5}
+.bar b{color:#e8c77a;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+
+/* hero */
+header{text-align:center;padding:56px 0 28px}
+.logo{font-size:15px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);font-weight:600}
+h1{font-size:clamp(34px,6vw,54px);line-height:1.08;margin:14px 0 14px;font-weight:600}
+.lede{max-width:620px;margin:0 auto;color:var(--muted);font-size:17px}
+.letter{max-width:620px;margin:30px auto 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 26px;text-align:left;font-size:16px}
+.letter p+p{margin-top:10px}
+.sign{font-style:italic;font-size:22px;margin-top:12px;color:var(--navy)}
+
+/* countdown */
+.clock{display:flex;justify-content:center;gap:10px;margin:30px 0 6px}
+.clock div{background:var(--card);border:1px solid var(--line);border-radius:12px;min-width:78px;padding:10px 6px;text-align:center}
+.clock span{display:block;font:600 30px/1 "Cormorant Garamond",serif;font-variant-numeric:tabular-nums}
+.clock small{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.clock-note{text-align:center;color:var(--muted);font-size:13px}
+
+/* archive feature */
+.feature{margin:44px 0 18px;background:var(--navy);color:#f3ead7;border-radius:18px;padding:30px;display:grid;grid-template-columns:260px 1fr;gap:30px;align-items:center}
+.stack{position:relative;height:230px}
+.stack img{position:absolute;width:118px;border-radius:6px;box-shadow:0 10px 24px rgba(0,0,0,.45)}
+.tag{display:inline-block;background:#e8c77a;color:var(--navy);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:5px 10px;border-radius:99px}
+.feature h2{font-size:34px;line-height:1.1;margin:12px 0 8px;font-weight:600;color:#fff}
+.feature p{color:#cfc6b3}
+.feature ul{list-style:none;margin:12px 0 0;display:grid;gap:4px;font-size:15px;color:#e6dcc6}
+.feature li:before{content:"✦ ";color:#e8c77a}
+.price{display:flex;align-items:baseline;gap:12px;margin:18px 0 14px;flex-wrap:wrap}
+.was{text-decoration:line-through;opacity:.6;font-size:20px}
+.now{font:700 44px/1 "Cormorant Garamond",serif}
+.save{font-size:13px;font-weight:600;color:#e8c77a}
+
+/* buttons */
+.btn{display:inline-block;border:0;cursor:pointer;text-decoration:none;font:600 15px Inter,sans-serif;border-radius:10px;padding:14px 22px;text-align:center;transition:transform .1s,filter .15s}
+.btn:active{transform:translateY(1px)}
+.btn-gold{background:#e8c77a;color:var(--navy)}
+.btn-gold:hover{filter:brightness(1.05)}
+.btn-dark{background:var(--navy);color:#fff;width:100%}
+.btn-dark:hover{filter:brightness(1.2)}
+.btn.loading{opacity:.75;pointer-events:none}
+
+/* grid */
+.section-title{text-align:center;margin:54px 0 6px;font-size:32px;font-weight:600}
+.section-sub{text-align:center;color:var(--muted);margin-bottom:24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column}
+.card img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px;background:var(--gold-soft)}
+.cat{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-top:14px}
+.card h3{font-size:22px;line-height:1.15;margin:4px 0 6px;font-weight:600}
+.card p{font-size:14px;color:var(--muted);flex:1}
+.card .price{margin:12px 0}
+.card .was{font-size:17px;color:var(--muted);opacity:1}
+.card .now{font-size:34px;color:var(--navy)}
+.owned{font-size:13px;color:var(--ok);font-weight:600;padding:12px 0;text-align:center}
+.card.is-owned{opacity:.6}
+.feature.is-owned{opacity:.7}
+.trilogy.is-owned{opacity:.7}
+
+/* trilogy row */
+.trilogy{margin-top:18px;background:var(--gold-soft);border:1px solid #e2cf9f;border-radius:14px;padding:20px 22px;display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.trilogy h3{font-size:24px;font-weight:600}
+.trilogy p{font-size:14px;color:var(--muted)}
+.trilogy .price{margin:0}
+.trilogy .was{color:var(--muted);opacity:1;font-size:17px}
+.trilogy .now{font-size:34px;color:var(--navy)}
+
+/* trust + footer */
+.trust{display:flex;justify-content:center;gap:26px;flex-wrap:wrap;margin:44px 0 10px;color:var(--muted);font-size:14px}
+footer{text-align:center;color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px solid var(--line);margin-top:34px}
+footer a{color:var(--muted)}
+
+/* closed state */
+.closed{display:none;max-width:560px;margin:90px auto;text-align:center;padding:0 16px}
+.closed h1{font-size:40px}
+body.is-closed .open-only{display:none}
+body.is-closed .closed{display:block}
+
+@media (max-width:720px){
+  .feature{grid-template-columns:1fr;padding:22px}
+  .stack{height:190px;max-width:260px;margin:0 auto;width:100%}
+  .stack img{width:96px}
+  .clock div{min-width:66px}
+  .clock span{font-size:26px}
+  .trilogy{flex-direction:column;align-items:stretch;text-align:left}
+}
+</style>
+</head>
+<body>
+
+<div class="bar open-only">Private reader's pricing · closes in <b id="bar-clock">--:--:--</b></div>
+
+<main class="wrap open-only">
+  <header>
+    <div class="logo">Rabbi David</div>
+    <h1 class="serif">The Private Reading Room</h1>
+    <p class="lede">This page is not on the website. It opened only for the readers who received my letter, and it closes on its own.</p>
+
+    <div class="letter">
+      <p>Shalom <span data-first-name>friend</span>,</p>
+      <p>For one day, every book in the library is at reader's price. The single works are $32. The two shorter ones are $12. The complete archive, all six books, is $97.</p>
+      <p>When the clock reaches zero, this room closes and the books return to their usual price on the website.</p>
+      <p class="sign serif">— Rabbi David</p>
+    </div>
+
+    <div class="clock" aria-label="Time remaining">
+      <div><span id="c-h">--</span><small>Hours</small></div>
+      <div><span id="c-m">--</span><small>Minutes</small></div>
+      <div><span id="c-s">--</span><small>Seconds</small></div>
+    </div>
+    <p class="clock-note">Closes <span id="close-at">—</span></p>
+  </header>
+
+  <!-- Complete archive -->
+  <section class="feature" data-book="bundle_all">
+    <div class="stack" aria-hidden="true">
+      <img src="/images/cover-shield.webp" alt="" style="left:0;top:40px;transform:rotate(-8deg)">
+      <img src="/images/cover-generational.webp" alt="" style="left:44px;top:14px;transform:rotate(-2deg)">
+      <img src="/images/cover-kabbalah.webp" alt="" style="left:92px;top:30px;transform:rotate(5deg)">
+      <img src="/images/cover-commercial.webp" alt="" style="left:134px;top:58px;transform:rotate(10deg)">
+    </div>
+    <div>
+      <span class="tag">The whole library · best value</span>
+      <h2 class="serif">The Complete 6-Book Master Archive</h2>
+      <p>Every prayer, daily practice, business teaching, generational blueprint and protection framework in one collection.</p>
+      <ul>
+        <li>All 6 books in PDF · 980+ pages</li>
+        <li>Instant download and delivery to your email</li>
+        <li>Lifetime access</li>
+      </ul>
+      <div class="price"><span class="was" data-was="bundle_all">$200</span><span class="now">$97</span><span class="save">You keep $103</span></div>
+      <a class="btn btn-gold" href="#" data-offer-buy="bundle_all">Take the complete archive — $97</a>
+    </div>
+  </section>
+
+  <h2 class="section-title serif">Or choose a single book</h2>
+  <p class="section-sub">Each one delivered instantly to your email.</p>
+
+  <section class="grid">
+    <article class="card" data-book="legacy">
+      <img src="/images/cover-generational.webp" alt="The Generational Vault cover">
+      <div class="cat">Family &amp; Legacy</div>
+      <h3 class="serif">The Generational Vault</h3>
+      <p>Wealth that outlives you four generations: shared values, governance and education for an enduring family legacy. 208 pages.</p>
+      <div class="price"><span class="was" data-was="legacy">$62</span><span class="now">$32</span></div>
+      <a class="btn btn-dark" href="#" data-offer-buy="legacy">Get it for $32</a>
+    </article>
+
+    <article class="card" data-book="protection">
+      <img src="/images/cover-shield.webp" alt="The Jewish Shield cover">
+      <div class="cat">Protection &amp; Resilience</div>
+      <h3 class="serif">The Jewish Shield Against Financial Ruin</h3>
+      <p>Historical frameworks for protecting what you have built: risk, contingency and resilience. 163 pages.</p>
+      <div class="price"><span class="was" data-was="protection">$49</span><span class="now">$32</span></div>
+      <a class="btn btn-dark" href="#" data-offer-buy="protection">Get it for $32</a>
+    </article>
+
+    <article class="card" data-book="ceo">
+      <img src="/images/cover-commercial.webp" alt="Ancient Jewish Rules for Commercial Dominance cover">
+      <div class="cat">Business Stewardship</div>
+      <h3 class="serif">Ancient Jewish Rules for Commercial Dominance</h3>
+      <p>Twelve principles on honest negotiation, partnerships and decisions, from the Torah CEO teachings. 150 pages.</p>
+      <div class="price"><span class="was" data-was="ceo">$46</span><span class="now">$32</span></div>
+      <a class="btn btn-dark" href="#" data-offer-buy="ceo">Get it for $32</a>
+    </article>
+
+    <article class="card" data-book="rituals">
+      <img src="/images/cover-rituals.webp" alt="The 7 Hidden Money Rituals cover">
+      <div class="cat">Sacred Rituals</div>
+      <h3 class="serif">The 7 Hidden Money Rituals of Secret Jewish Dynasties</h3>
+      <p>Seven daily practices to anchor gratitude, order and purpose around money. 37 pages.</p>
+      <div class="price"><span class="was" data-was="rituals">$32</span><span class="now">$12</span></div>
+      <a class="btn btn-dark" href="#" data-offer-buy="rituals">Get it for $12</a>
+    </article>
+
+    <article class="card" data-book="morning">
+      <img src="/images/ebook-prayer-cover.webp" alt="The Rabbi's Morning Wealth Blessing cover">
+      <div class="cat">Daily Devotional</div>
+      <h3 class="serif">The Rabbi's Morning Wealth Blessing</h3>
+      <p>Morning prayer, gratitude and daily purpose with Hebrew scriptural insight. 212 pages.</p>
+      <div class="price"><span class="was" data-was="morning">$22</span><span class="now">$12</span></div>
+      <a class="btn btn-dark" href="#" data-offer-buy="morning">Get it for $12</a>
+    </article>
+  </section>
+
+  <section class="trilogy" data-book="complete">
+    <div>
+      <div class="cat" style="margin:0">3-book trilogy</div>
+      <h3 class="serif">The Master Kabbalah Wealth System</h3>
+      <p>Morning Blessing, 7 Money Rituals and the Complete Wealth System, together.</p>
+    </div>
+    <div class="price"><span class="was" data-was="complete">$120</span><span class="now">$67</span></div>
+    <a class="btn btn-dark" style="width:auto" href="#" data-offer-buy="complete">Get the trilogy — $67</a>
+  </section>
+
+  <div class="trust">
+    <span>🔒 Secure checkout by Stripe</span>
+    <span>📩 Instant delivery to your email</span>
+    <span>↺ Refund policy as on rabbidavid.org</span>
+  </div>
+</main>
+
+<section class="closed">
+  <div class="logo">Rabbi David</div>
+  <h1 class="serif">This reading room has closed</h1>
+  <p class="lede" style="margin-top:12px">The reader's pricing was open for one day and has now ended. The full library remains available on the website at its usual price.</p>
+  <p style="margin-top:26px"><a class="btn btn-dark" style="width:auto" href="/#catalog">Visit the library</a></p>
+</section>
+
+<footer>
+  © 2026 Rabbi David · <a href="/terms">Terms</a> · <a href="/refund">Refunds</a> · <a href="/privacy">Privacy</a>
+</footer>
+
+<script>
+(function(){
+  var q = new URLSearchParams(location.search);
+  var token = q.get('t') || '';
+
+  if (!token) {
+    document.body.classList.add('is-closed');
+    return;
+  }
+
+  // Pre-parse client expiration from base64url token for immediate countdown
+  var exp = 0;
+  try {
+    var b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var raw = atob(b64);
+    var parts = raw.split('|');
+    if (parts.length >= 2) {
+      var expSec = parseInt(parts[1], 10);
+      if (!isNaN(expSec) && expSec > 0) {
+        exp = expSec * 1000;
+      }
+    }
+  } catch(e) {}
+
+  if (exp && Date.now() >= exp) {
+    document.body.classList.add('is-closed');
+    return;
+  }
+
+  function applyOwned(ownedList) {
+    if (!ownedList || !ownedList.length) return;
+    ownedList.forEach(function(id) {
+      var targets = document.querySelectorAll('.card[data-book="'+id+'"], .feature[data-book="'+id+'"], .trilogy[data-book="'+id+'"]');
+      targets.forEach(function(c) {
+        c.classList.add('is-owned');
+        var b = c.querySelector('[data-offer-buy]');
+        if (b) {
+          b.outerHTML = '<div class="owned">✓ Already in your library</div>';
+        }
+      });
+    });
+  }
+
+  function setFirstName(name) {
+    if (name) {
+      document.querySelectorAll('[data-first-name]').forEach(function(e){ e.textContent = name; });
+    }
+  }
+
+  function updateClockDisplay() {
+    if (!exp) return;
+    try {
+      document.getElementById('close-at').textContent = new Date(exp).toLocaleString([], {weekday:'long',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+    } catch(e){}
+  }
+
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  var timerId = null;
+  function tick() {
+    if (!exp) return;
+    var ms = exp - Date.now();
+    if (ms <= 0) {
+      document.body.classList.add('is-closed');
+      return;
+    }
+    var h = Math.floor(ms / 3600e3),
+        m = Math.floor((ms % 3600e3) / 60e3),
+        s = Math.floor((ms % 60e3) / 1e3);
+    document.getElementById('c-h').textContent = pad(h);
+    document.getElementById('c-m').textContent = pad(m);
+    document.getElementById('c-s').textContent = pad(s);
+    document.getElementById('bar-clock').textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
+    timerId = setTimeout(tick, 1000);
+  }
+
+  // Hydrate from server injection or API
+  var injected = window.__READING_ROOM_DATA;
+  if (injected) {
+    if (!injected.valid) {
+      document.body.classList.add('is-closed');
+      return;
+    }
+    if (injected.expires_at) exp = injected.expires_at;
+    setFirstName(injected.first_name);
+    applyOwned(injected.owned);
+    updateClockDisplay();
+    tick();
+  } else {
+    if (exp) {
+      updateClockDisplay();
+      tick();
+    }
+    // Fetch validation & user data
+    fetch('/api/reading-room-data?t=' + encodeURIComponent(token), {
+      headers: { 'X-Requested-With': 'RabbiDavid' }
+    })
+    .then(function(res){
+      if (res.status === 410) {
+        document.body.classList.add('is-closed');
+        throw new Error('Closed');
+      }
+      return res.json();
+    })
+    .then(function(data){
+      if (!data.ok || !data.valid) {
+        document.body.classList.add('is-closed');
+        return;
+      }
+      if (data.expires_at) exp = data.expires_at;
+      setFirstName(data.first_name);
+      applyOwned(data.owned);
+      updateClockDisplay();
+      if (!timerId) tick();
+    })
+    .catch(function(err){
+      if (err.message === 'Closed') {
+        document.body.classList.add('is-closed');
+      }
+    });
+  }
+
+  // Handle Checkout Click
+  document.addEventListener('click', function(e) {
+    var b = e.target.closest('[data-offer-buy]');
+    if (!b) return;
+    e.preventDefault();
+
+    var bookId = b.dataset.offerBuy;
+    var originalHtml = b.innerHTML;
+    b.classList.add('loading');
+    b.innerHTML = 'Connecting to Stripe...';
+
+    fetch('/api/create-offer-checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'RabbiDavid'
+      },
+      body: JSON.stringify({ book_id: bookId, t: token })
+    })
+    .then(function(res){
+      if (res.status === 410) {
+        document.body.classList.add('is-closed');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        throw new Error('Closed');
+      }
+      return res.json();
+    })
+    .then(function(data){
+      if (data.ok && data.checkout_url) {
+        b.innerHTML = 'Opening Stripe...';
+        window.location.href = data.checkout_url;
+      } else {
+        alert(data.error || 'Unable to open checkout. Please try again.');
+        b.classList.remove('loading');
+        b.innerHTML = originalHtml;
+      }
+    })
+    .catch(function(err){
+      if (err.message !== 'Closed') {
+        alert('Network connection error. Please try again.');
+        b.classList.remove('loading');
+        b.innerHTML = originalHtml;
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

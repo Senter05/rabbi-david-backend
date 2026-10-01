@@ -7,6 +7,7 @@
 <title>The Private Reading Room · Rabbi David</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/js/reading-room.js" defer></script>
 <style>
 :root{
   --ink:#1d1a16; --muted:#6b6157; --paper:#f7f2e8; --card:#fffdf8; --line:#e4d9c4;
@@ -129,6 +130,7 @@ body.is-closed .closed{display:block}
       <div><span id="c-s">--</span><small>Seconds</small></div>
     </div>
     <p class="clock-note">Closes <span id="close-at">—</span></p>
+    <div id="offer-error" style="display:none; max-width:620px; margin:20px auto 0; background:#fde8e8; border:1px solid #f8b4b4; color:#9b1c1c; border-radius:10px; padding:14px 18px; text-align:center; font-size:15px; font-weight:500;"></div>
   </header>
 
   <!-- Complete archive -->
@@ -231,174 +233,5 @@ body.is-closed .closed{display:block}
   © 2026 Rabbi David · <a href="/terms">Terms</a> · <a href="/refund">Refunds</a> · <a href="/privacy">Privacy</a>
 </footer>
 
-<script>
-(function(){
-  var q = new URLSearchParams(location.search);
-  var token = q.get('t') || '';
-
-  if (!token) {
-    document.body.classList.add('is-closed');
-    return;
-  }
-
-  // Pre-parse client expiration from base64url token for immediate countdown
-  var exp = 0;
-  try {
-    var b64 = token.replace(/-/g, '+').replace(/_/g, '/');
-    while (b64.length % 4) b64 += '=';
-    var raw = atob(b64);
-    var parts = raw.split('|');
-    if (parts.length >= 2) {
-      var expSec = parseInt(parts[1], 10);
-      if (!isNaN(expSec) && expSec > 0) {
-        exp = expSec * 1000;
-      }
-    }
-  } catch(e) {}
-
-  if (exp && Date.now() >= exp) {
-    document.body.classList.add('is-closed');
-    return;
-  }
-
-  function applyOwned(ownedList) {
-    if (!ownedList || !ownedList.length) return;
-    ownedList.forEach(function(id) {
-      var targets = document.querySelectorAll('.card[data-book="'+id+'"], .feature[data-book="'+id+'"], .trilogy[data-book="'+id+'"]');
-      targets.forEach(function(c) {
-        c.classList.add('is-owned');
-        var b = c.querySelector('[data-offer-buy]');
-        if (b) {
-          b.outerHTML = '<div class="owned">✓ Already in your library</div>';
-        }
-      });
-    });
-  }
-
-  function setFirstName(name) {
-    if (name) {
-      document.querySelectorAll('[data-first-name]').forEach(function(e){ e.textContent = name; });
-    }
-  }
-
-  function updateClockDisplay() {
-    if (!exp) return;
-    try {
-      document.getElementById('close-at').textContent = new Date(exp).toLocaleString([], {weekday:'long',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
-    } catch(e){}
-  }
-
-  var pad = function(n){ return String(n).padStart(2,'0'); };
-  var timerId = null;
-  function tick() {
-    if (!exp) return;
-    var ms = exp - Date.now();
-    if (ms <= 0) {
-      document.body.classList.add('is-closed');
-      return;
-    }
-    var h = Math.floor(ms / 3600e3),
-        m = Math.floor((ms % 3600e3) / 60e3),
-        s = Math.floor((ms % 60e3) / 1e3);
-    document.getElementById('c-h').textContent = pad(h);
-    document.getElementById('c-m').textContent = pad(m);
-    document.getElementById('c-s').textContent = pad(s);
-    document.getElementById('bar-clock').textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
-    timerId = setTimeout(tick, 1000);
-  }
-
-  // Hydrate from server injection or API
-  var injected = window.__READING_ROOM_DATA;
-  if (injected) {
-    if (!injected.valid) {
-      document.body.classList.add('is-closed');
-      return;
-    }
-    if (injected.expires_at) exp = injected.expires_at;
-    setFirstName(injected.first_name);
-    applyOwned(injected.owned);
-    updateClockDisplay();
-    tick();
-  } else {
-    if (exp) {
-      updateClockDisplay();
-      tick();
-    }
-    // Fetch validation & user data
-    fetch('/api/reading-room-data?t=' + encodeURIComponent(token), {
-      headers: { 'X-Requested-With': 'RabbiDavid' }
-    })
-    .then(function(res){
-      if (res.status === 410) {
-        document.body.classList.add('is-closed');
-        throw new Error('Closed');
-      }
-      return res.json();
-    })
-    .then(function(data){
-      if (!data.ok || !data.valid) {
-        document.body.classList.add('is-closed');
-        return;
-      }
-      if (data.expires_at) exp = data.expires_at;
-      setFirstName(data.first_name);
-      applyOwned(data.owned);
-      updateClockDisplay();
-      if (!timerId) tick();
-    })
-    .catch(function(err){
-      if (err.message === 'Closed') {
-        document.body.classList.add('is-closed');
-      }
-    });
-  }
-
-  // Handle Checkout Click
-  document.addEventListener('click', function(e) {
-    var b = e.target.closest('[data-offer-buy]');
-    if (!b) return;
-    e.preventDefault();
-
-    var bookId = b.dataset.offerBuy;
-    var originalHtml = b.innerHTML;
-    b.classList.add('loading');
-    b.innerHTML = 'Connecting to Stripe...';
-
-    fetch('/api/create-offer-checkout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'RabbiDavid'
-      },
-      body: JSON.stringify({ book_id: bookId, t: token })
-    })
-    .then(function(res){
-      if (res.status === 410) {
-        document.body.classList.add('is-closed');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        throw new Error('Closed');
-      }
-      return res.json();
-    })
-    .then(function(data){
-      if (data.ok && data.checkout_url) {
-        b.innerHTML = 'Opening Stripe...';
-        window.location.href = data.checkout_url;
-      } else {
-        alert(data.error || 'Unable to open checkout. Please try again.');
-        b.classList.remove('loading');
-        b.innerHTML = originalHtml;
-      }
-    })
-    .catch(function(err){
-      if (err.message !== 'Closed') {
-        alert('Network connection error. Please try again.');
-        b.classList.remove('loading');
-        b.innerHTML = originalHtml;
-      }
-    });
-  });
-})();
-</script>
 </body>
 </html>

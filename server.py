@@ -956,7 +956,7 @@ class Handler(BaseHTTPRequestHandler):
     def headers_common(self,mime,cache='no-store'):
         self.send_header('Content-Type',mime);self.send_header('Cache-Control',cache)
         self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer')
-        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://rabbidavid.org; media-src 'self' blob:; connect-src 'self' https://api.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com")
         origin=self.headers.get('Origin')
         if origin in origins(CONFIG,PORT):
             self.send_header('Access-Control-Allow-Origin',origin)
@@ -1147,24 +1147,11 @@ class Handler(BaseHTTPRequestHandler):
         html = file_path.read_text(encoding='utf-8')
         if not is_valid:
             html = html.replace('<body>', '<body class="is-closed">')
-            inject = f"<script>window.__READING_ROOM_DATA = {{ valid: false, reason: {json.dumps(err)} }};</script>"
-            html = html.replace('</head>', f'{inject}\n</head>')
             return self.send(200, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
         user_info = lookup_recipient_info(email)
         first_name = user_info.get('first_name', '')
-        owned_books = user_info.get('owned', [])
         display_name = first_name if first_name else 'friend'
         html = html.replace('<span data-first-name>friend</span>', f'<span data-first-name>{display_name}</span>')
-        inject = f"""<script>
-window.__READING_ROOM_DATA = {{
-    valid: true,
-    email: {json.dumps(email)},
-    first_name: {json.dumps(first_name)},
-    expires_at: {exp * 1000},
-    owned: {json.dumps(owned_books)}
-}};
-</script>"""
-        html = html.replace('</head>', f'{inject}\n</head>')
         return self.send(200, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
     def handle_reading_room_data(self, u):
         qs = urllib.parse.parse_qs(u.query)
@@ -1189,6 +1176,14 @@ window.__READING_ROOM_DATA = {{
             return self.send(410, {'ok': False, 'error': 'This reading room has closed', 'reason': err})
         if book_id not in OFFER_STRIPE_PRICES:
             return self.send(400, {'ok': False, 'error': f'Unknown offer book: {book_id}'})
+        user_info = lookup_recipient_info(email)
+        owned = set(user_info.get('owned', []))
+        if book_id in ('complete', 'bundle_all'):
+            if book_id in owned:
+                return self.send(409, {'ok': False, 'error': f'You already own {book_id} in your library.'})
+        else:
+            if book_id in owned:
+                return self.send(409, {'ok': False, 'error': 'This book is already in your library.'})
         price_id, unit_amount, prod_name, download_path = OFFER_STRIPE_PRICES[book_id]
         stripe_key = os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
         if not stripe_key:

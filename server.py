@@ -499,6 +499,24 @@ def lookup_recipient_info(email: str):
         
     return {'first_name': first_name, 'owned': sorted(list(owned))}
 
+def record_unsubscribe(email: str):
+    email = email.strip().lower()
+    if not email or '@' not in email:
+        return
+    for path in (Path(r'D:/playwright/data/unsubscribes.json'), ROOT / 'data' / 'unsubscribes.json', ROOT / 'unsubscribes.json'):
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            data = {}
+            if path.is_file():
+                try:
+                    data = json.loads(path.read_text(encoding='utf-8'))
+                except Exception:
+                    data = {}
+            data[email] = {'unsubscribed_at': time.time(), 'iso': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}
+            path.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        except Exception:
+            pass
+
 def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, currency='usd'):
     aliases = {
         'bundle': 'bundle_all',
@@ -1131,6 +1149,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_reading_room(u)
             if path == '/api/reading-room-data':
                 return self.handle_reading_room_data(u)
+            if path in ('/api/unsubscribe', '/unsubscribe'):
+                return self.handle_unsubscribe(u)
             if path.startswith('/api/'):return self.send(404,{'error':'Not found'})
             if path=='/':path='/index.html'
             f=(ROOT/'public'/urllib.parse.unquote(path.lstrip('/'))).resolve()
@@ -1222,6 +1242,42 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as ex:
             print(f"[STRIPE OFFER CHECKOUT ERROR] {ex}", flush=True)
             return self.send(500, {'ok': False, 'error': 'Payment gateway connection error'})
+    def handle_unsubscribe(self, u):
+        qs = urllib.parse.parse_qs(u.query)
+        email = (qs.get('email', [''])[0] or qs.get('e', [''])[0]).strip().lower()
+        token = qs.get('t', [''])[0].strip()
+        if token and not email:
+            is_valid, t_email, exp, err = verify_offer_token(token)
+            if is_valid and t_email:
+                email = t_email
+        if email and '@' in email:
+            record_unsubscribe(email)
+        html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unsubscribed — Rabbi David</title>
+  <style>
+    body { font-family: Georgia, serif; background: #0c0d0e; color: #ece6dc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; text-align: center; }
+    .box { max-width: 440px; background: #141618; padding: 40px 30px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); }
+    h1 { font-weight: normal; font-size: 24px; margin: 0 0 16px; color: #f5f2eb; }
+    p { font-size: 15px; line-height: 1.6; color: #9c9488; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>You have been unsubscribed</h1>
+    <p>You will not receive further letters or notifications from Rabbi David.</p>
+  </div>
+</body>
+</html>"""
+        return self.send(200, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
+    def handle_unsubscribe_post(self, body):
+        email = (body.get('email') or body.get('e') or '').strip().lower()
+        if email and '@' in email:
+            record_unsubscribe(email)
+        return self.send(200, {'ok': True, 'unsubscribed': True})
     def handle_stripe_webhook(self):
         try:
             length=int(self.headers.get('Content-Length','0'))
@@ -1523,6 +1579,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200,{'ok':True,'checkout_url':cs_data.get('url'),'session_id':cs_data.get('id')})
             elif path=='/api/create-offer-checkout':
                 return self.handle_create_offer_checkout(body)
+            elif path in ('/api/unsubscribe', '/unsubscribe'):
+                return self.handle_unsubscribe_post(body)
             elif path=='/api/plan-retry':
                 if body.get('consent') is not True:raise ValueError('Please confirm preparation of your detailed plan.')
                 if not AI_ENABLED:raise ValueError('Personal plan generation is not connected.')

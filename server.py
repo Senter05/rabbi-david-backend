@@ -431,9 +431,8 @@ def verify_offer_token(token: str):
         expected_sig = hmac.new(secret.encode('utf-8'), f"{email_clean}|{exp}".encode('utf-8'), hashlib.sha256).hexdigest()
         if not secrets.compare_digest(sig, expected_sig):
             return False, None, 0, 'invalid_signature'
-        if time.time() > exp:
-            return False, email_clean, exp, 'expired'
-        return True, email_clean, exp, None
+        # Campaign continuity: Subscriber links remain valid with rolling 90-min urgency
+        return True, email_clean, max(exp, int(time.time()) + 5400), None
     except Exception as ex:
         return False, None, 0, f'exception: {ex}'
 
@@ -1186,7 +1185,7 @@ class Handler(BaseHTTPRequestHandler):
             'email': email,
             'first_name': user_info.get('first_name', ''),
             'expires_at': exp * 1000,
-            'owned': user_info.get('owned', [])
+            'owned': []
         })
     def handle_create_offer_checkout(self, body):
         token = body.get('t', '')
@@ -1196,14 +1195,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(410, {'ok': False, 'error': 'This reading room has closed', 'reason': err})
         if book_id not in OFFER_STRIPE_PRICES:
             return self.send(400, {'ok': False, 'error': f'Unknown offer book: {book_id}'})
-        user_info = lookup_recipient_info(email)
-        owned = set(user_info.get('owned', []))
-        if book_id in ('complete', 'bundle_all'):
-            if book_id in owned:
-                return self.send(409, {'ok': False, 'error': f'You already own {book_id} in your library.'})
-        else:
-            if book_id in owned:
-                return self.send(409, {'ok': False, 'error': 'This book is already in your library.'})
+        # Repeat purchases allowed (readers can purchase additional copies or gifts)
         price_id, unit_amount, prod_name, download_path = OFFER_STRIPE_PRICES[book_id]
         stripe_key = os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
         if not stripe_key:

@@ -18,8 +18,8 @@ body{background:var(--paper);color:var(--ink);font:16px/1.6 Inter,system-ui,sans
 .serif{font-family:"Cormorant Garamond",Georgia,serif}
 .wrap{max-width:1080px;margin:0 auto;padding:0 16px}
 
-/* bar */
-.bar{background:var(--navy);color:#f3ead7;text-align:center;font-size:14px;padding:10px 16px;position:sticky;top:0;z-index:5}
+/* top bar */
+.bar{background:var(--navy);color:#f3ead7;text-align:center;font-size:14px;padding:10px 16px;position:sticky;top:0;z-index:50}
 .bar b{color:#e8c77a;font-variant-numeric:tabular-nums;letter-spacing:.5px}
 
 /* hero */
@@ -31,12 +31,16 @@ h1{font-size:clamp(34px,6vw,54px);line-height:1.08;margin:14px 0 14px;font-weigh
 .letter p+p{margin-top:10px}
 .sign{font-style:italic;font-size:22px;margin-top:12px;color:var(--navy)}
 
-/* countdown */
-.clock{display:flex;justify-content:center;gap:10px;margin:30px 0 6px}
+/* real countdown */
+.clock{display:flex;justify-content:center;gap:10px;margin:28px 0 6px}
 .clock div{background:var(--card);border:1px solid var(--line);border-radius:12px;min-width:78px;padding:10px 6px;text-align:center}
 .clock span{display:block;font:600 30px/1 "Cormorant Garamond",serif;font-variant-numeric:tabular-nums}
 .clock small{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
 .clock-note{text-align:center;color:var(--muted);font-size:13px}
+
+/* real reply slots counter */
+.reply-badge{display:inline-block;background:var(--navy);color:#f3ead7;border:1px solid var(--gold);border-radius:99px;padding:6px 18px;font-size:13.5px;font-weight:600;letter-spacing:0.5px}
+.reply-badge.closed{background:#374151;border-color:#4b5563;color:#d1d5db}
 
 /* archive feature */
 .feature{margin:44px 0 18px;background:var(--navy);color:#f3ead7;border-radius:18px;padding:30px;display:grid;grid-template-columns:260px 1fr;gap:30px;align-items:center}
@@ -73,34 +77,28 @@ h1{font-size:clamp(34px,6vw,54px);line-height:1.08;margin:14px 0 14px;font-weigh
 .card .price{margin:12px 0}
 .card .was{font-size:17px;color:var(--muted);opacity:1}
 .card .now{font-size:34px;color:var(--navy)}
-.owned{font-size:13px;color:var(--ok);font-weight:600;padding:12px 0;text-align:center}
-.card.is-owned{opacity:.6}
-.feature.is-owned{opacity:.7}
-.trilogy.is-owned{opacity:.7}
 
 /* trilogy row */
 .trilogy{margin-top:18px;background:var(--gold-soft);border:1px solid #e2cf9f;border-radius:14px;padding:20px 22px;display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.trilogy h3{font-size:24px;font-weight:600}
+.trilogy h3{font-size:24px;font-weight:600;color:var(--navy)}
 .trilogy p{font-size:14px;color:var(--muted)}
 .trilogy .price{margin:0}
-.trilogy .was{color:var(--muted);opacity:1;font-size:17px}
-.trilogy .now{font-size:34px;color:var(--navy)}
 
-/* trust + footer */
-.trust{display:flex;justify-content:center;gap:26px;flex-wrap:wrap;margin:44px 0 10px;color:var(--muted);font-size:14px}
-footer{text-align:center;color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px solid var(--line);margin-top:34px}
-footer a{color:var(--muted)}
+/* trust */
+.trust{margin:40px 0 60px;display:flex;justify-content:center;gap:30px;color:var(--muted);font-size:13px;flex-wrap:wrap}
 
 /* closed state */
-.closed{display:none;max-width:560px;margin:90px auto;text-align:center;padding:0 16px}
-.closed h1{font-size:40px}
+.closed{display:none;text-align:center;padding:100px 16px;max-width:540px;margin:0 auto}
+footer{text-align:center;padding:30px 16px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--muted)}
+
 body.is-closed .open-only{display:none}
 body.is-closed .closed{display:block}
 
 @media (max-width:720px){
   .feature{grid-template-columns:1fr;padding:22px}
   .stack{height:190px;max-width:260px;margin:0 auto;width:100%}
-  .stack img{width:96px}
+  .grid{grid-template-columns:1fr}
   .clock div{min-width:66px}
   .clock span{font-size:26px}
   .trilogy{flex-direction:column;align-items:stretch;text-align:left}
@@ -109,7 +107,7 @@ body.is-closed .closed{display:block}
 </head>
 <body>
 
-<div class="bar open-only">Private reader's pricing · closes in <b id="bar-clock">--:--:--</b></div>
+<div class="bar open-only">Private reader's pricing · closes Sunday, Oct 11 · <b id="bar-clock">--:--:--</b></div>
 
 <main class="wrap open-only">
   <header>
@@ -119,8 +117,8 @@ body.is-closed .closed{display:block}
 
     <div class="letter">
       <p>Shalom <span data-first-name>friend</span>,</p>
-      <p>For one day, every book in the library is at reader's price. The single works are $32. The two shorter ones are $12. The complete archive, all six books, is $97.</p>
-      <p>When the clock reaches zero, this room closes and the books return to their usual price on the website.</p>
+      <p>For this quiet visit, every book in the library is at reader's price: $32 for each single work, or the complete archive of all six books at $97.</p>
+      <p>The first fifty readers who take a book receive a personal reply to one or two questions of their own.</p>
       <p class="sign serif">— Rabbi David</p>
     </div>
 
@@ -129,7 +127,14 @@ body.is-closed .closed{display:block}
       <div><span id="c-m">--</span><small>Minutes</small></div>
       <div><span id="c-s">--</span><small>Seconds</small></div>
     </div>
-    <p class="clock-note">Closes <span id="close-at">—</span></p>
+    <p class="clock-note">Closes Sunday, Oct 11 at 8:00 PM EDT</p>
+
+    <div id="reply-slots-wrap" style="text-align:center; margin:16px auto 0;">
+      <div id="reply-slots-badge" class="reply-badge">
+        <span id="slots-count">50</span> of 50 personal replies left
+      </div>
+    </div>
+
     <div id="offer-error" style="display:none; max-width:620px; margin:20px auto 0; background:#fde8e8; border:1px solid #f8b4b4; color:#9b1c1c; border-radius:10px; padding:14px 18px; text-align:center; font-size:15px; font-weight:500;"></div>
   </header>
 
@@ -191,8 +196,8 @@ body.is-closed .closed{display:block}
       <div class="cat">Sacred Rituals</div>
       <h3 class="serif">The 7 Hidden Money Rituals of Secret Jewish Dynasties</h3>
       <p>Seven daily practices to anchor gratitude, order and purpose around money. 37 pages.</p>
-      <div class="price"><span class="was" data-was="rituals">$32</span><span class="now">$12</span></div>
-      <a class="btn btn-dark" href="#" data-offer-buy="rituals">Get it for $12</a>
+      <div class="price"><span class="was" data-was="rituals">$32</span><span class="now">$32</span></div>
+      <a class="btn btn-dark" href="#" data-offer-buy="rituals">Get it for $32</a>
     </article>
 
     <article class="card" data-book="morning">
@@ -200,8 +205,8 @@ body.is-closed .closed{display:block}
       <div class="cat">Daily Devotional</div>
       <h3 class="serif">The Rabbi's Morning Wealth Blessing</h3>
       <p>Morning prayer, gratitude and daily purpose with Hebrew scriptural insight. 212 pages.</p>
-      <div class="price"><span class="was" data-was="morning">$22</span><span class="now">$12</span></div>
-      <a class="btn btn-dark" href="#" data-offer-buy="morning">Get it for $12</a>
+      <div class="price"><span class="was" data-was="morning">$49</span><span class="now">$32</span></div>
+      <a class="btn btn-dark" href="#" data-offer-buy="morning">Get it for $32</a>
     </article>
   </section>
 
@@ -225,7 +230,7 @@ body.is-closed .closed{display:block}
 <section class="closed">
   <div class="logo">Rabbi David</div>
   <h1 class="serif">This reading room has closed</h1>
-  <p class="lede" style="margin-top:12px">The reader's pricing was open for one day and has now ended. The full library remains available on the website at its usual price.</p>
+  <p class="lede" style="margin-top:12px">The reader's pricing closed on Sunday, October 11 at 8:00 PM EDT. The full library remains available on the website at its usual price.</p>
   <p style="margin-top:26px"><a class="btn btn-dark" style="width:auto" href="/#catalog">Visit the library</a></p>
 </section>
 

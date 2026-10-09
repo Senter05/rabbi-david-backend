@@ -1,2 +1,10 @@
 /api/*  https://rabbi-david-backend.onrender.com/api/:splat  200!
 /access  https://rabbi-david-backend.onrender.com/access  200!
+/unsubscribe  https://rabbi-david-backend.onrender.com/unsubscribe  200!
+/go/*  https://rabbi-david-backend.onrender.com/go/:splat  200!
+/for/*  https://rabbi-david-backend.onrender.com/for/:splat  200!
+/gift/*  https://rabbi-david-backend.onrender.com/gift/:splat  200!
+/thanks-question  https://rabbi-david-backend.onrender.com/thanks-question  200!
+/thanks-question.html  https://rabbi-david-backend.onrender.com/thanks-question  200!
+/admin  https://rabbi-david-backend.onrender.com/admin  200!
+/admin/*  https://rabbi-david-backend.onrender.com/admin/:splat  200!

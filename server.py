@@ -19,6 +19,8 @@ from email.utils import parseaddr
 import mail_delivery
 from email_templates import add_html as add_email_html
 from supabase_client import SupabaseClient
+import campaign_reply50
+import sys
 
 ROOT=Path(__file__).resolve().parent
 LOCK=threading.RLock();POOL=BoundedExecutor();STOP=threading.Event()
@@ -46,7 +48,10 @@ CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,sid TEXT,event TEXT,cre
 CREATE TABLE IF NOT EXISTS recovery_keys(token TEXT PRIMARY KEY,sid TEXT NOT NULL,expires REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY,session_id TEXT,email TEXT,book_id TEXT,amount INTEGER,currency TEXT,created REAL,delivery_status TEXT,provider_id TEXT,user_id TEXT);
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE,password_hash TEXT,salt TEXT,name TEXT,email_verified INTEGER DEFAULT 0,verification_token TEXT,created REAL,updated REAL);
-CREATE TABLE IF NOT EXISTS password_resets(token TEXT PRIMARY KEY,user_id TEXT,expires REAL);''')
+CREATE TABLE IF NOT EXISTS password_resets(token TEXT PRIMARY KEY,user_id TEXT,expires REAL);
+CREATE TABLE IF NOT EXISTS reply_slots(id TEXT PRIMARY KEY, campaign TEXT, email TEXT UNIQUE, session_id TEXT, order_id TEXT, created INTEGER);
+CREATE TABLE IF NOT EXISTS reply_questions(id TEXT PRIMARY KEY, email TEXT, name TEXT, question TEXT, session_id TEXT UNIQUE, status TEXT DEFAULT 'pending', created INTEGER, answered_at INTEGER);
+CREATE TABLE IF NOT EXISTS gift_redemptions(token TEXT PRIMARY KEY, email TEXT, redeemed_at INTEGER);''')
         columns={r[1] for r in con.execute('PRAGMA table_info(mail)')}
         if 'delivery_status' not in columns:con.execute("ALTER TABLE mail ADD COLUMN delivery_status TEXT NOT NULL DEFAULT 'local'")
         for field in ['delivery_error','provider_message_id']:
@@ -396,45 +401,19 @@ EBOOK_DELIVERY = {
 }
 
 OFFER_STRIPE_PRICES = {
-    'legacy': ('price_1ULpxDQPUFXetkqGUJTb5kLA', 3200, "The Generational Vault — Rabbi David", '/download/generational-wealth.html'),
+    'legacy': ('price_1ULpxDQPUFXetkqGUJTb5kLA', 3200, "The 5 Laws of Ancient Jewish Wealth — Rabbi David", '/download/generational-wealth.html'),
     'protection': ('price_1ULpxEQPUFXetkqGvGXhXYJM', 3200, "The Jewish Shield Against Financial Ruin — Rabbi David", '/download/protection.html'),
     'ceo': ('price_1ULpxFQPUFXetkqG7I6XUlrX', 3200, "Ancient Jewish Rules for Commercial Dominance — Rabbi David", '/download/torah-ceo-code.html'),
-    'rituals': ('price_1ULpxFQPUFXetkqGGQWWEA66', 1200, "The 7 Hidden Money Rituals of Secret Jewish Dynasties — Rabbi David", '/download/rituals.html'),
-    'morning': ('price_1ULpxHQPUFXetkqGmZFXRna7', 1200, "The Rabbi's Morning Wealth Blessing — Rabbi David", '/download/morning-blessing.html'),
+    'rituals': ('price_1UOfXCQPUFXetkqG1LYWXI7Y', 3200, "The 7 Hidden Money Rituals of Secret Jewish Dynasties — Rabbi David", '/download/rituals.html'),
+    'morning': ('price_1UOfX6QPUFXetkqGvcQeqjWm', 3200, "The Rabbi's Morning Wealth Blessing — Rabbi David", '/download/morning-blessing.html'),
     'complete': ('price_1ULpxIQPUFXetkqGNRkOLTYK', 6700, "The Master Kabbalah Wealth System: The 30-Day Financial Vault — Rabbi David", '/download/complete.html'),
     'bundle_all': ('price_1ULpxIQPUFXetkqGPF3jgXVM', 9700, "The Complete 6-Ebook Master Collection — Rabbi David", '/download/all-access.html')
 }
 
-OFFER_HMAC_SECRET = 'rd_reading_room_hmac_sec_2026_10_9f8e7d6c5b4a'
-
-def make_offer_token(email: str, expires_at: int) -> str:
-    email_clean = email.strip().lower()
-    payload = f"{email_clean}|{int(expires_at)}"
-    secret = os.environ.get('OFFER_HMAC_SECRET') or CONFIG.get('offer_hmac_secret') or OFFER_HMAC_SECRET
-    sig = hmac.new(secret.encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()
-    raw = f"{payload}|{sig}".encode('utf-8')
-    return base64.urlsafe_b64encode(raw).decode('ascii').rstrip('=')
-
-def verify_offer_token(token: str):
-    if not token:
-        return False, None, 0, 'missing_token'
-    try:
-        padded = token + '=' * (-len(token) % 4)
-        decoded = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
-        parts = decoded.split('|')
-        if len(parts) != 3:
-            return False, None, 0, 'malformed_token'
-        email, exp_str, sig = parts
-        email_clean = email.strip().lower()
-        exp = int(exp_str)
-        secret = os.environ.get('OFFER_HMAC_SECRET') or CONFIG.get('offer_hmac_secret') or OFFER_HMAC_SECRET
-        expected_sig = hmac.new(secret.encode('utf-8'), f"{email_clean}|{exp}".encode('utf-8'), hashlib.sha256).hexdigest()
-        if not secrets.compare_digest(sig, expected_sig):
-            return False, None, 0, 'invalid_signature'
-        # Campaign continuity: Subscriber links remain valid with rolling 90-min urgency
-        return True, email_clean, max(exp, int(time.time()) + 5400), None
-    except Exception as ex:
-        return False, None, 0, f'exception: {ex}'
+OFFER_HMAC_SECRET = campaign_reply50.OFFER_HMAC_SECRET
+TokenResult = campaign_reply50.TokenResult
+make_offer_token = campaign_reply50.make_offer_token
+verify_offer_token = campaign_reply50.verify_offer_token
 
 RECIPIENTS_LOOKUP_CACHE = None
 
@@ -1144,6 +1123,18 @@ class Handler(BaseHTTPRequestHandler):
                     update(self.new_cookie,init_user_session)
                     link_user_sessions(curr['id'],curr['email'],self.new_cookie)
                 return self.send(obj=safe_state(get(self.new_cookie)))
+            if path.startswith('/go/'):
+                return campaign_reply50.handle_go(self, path[4:], sys.modules[__name__])
+            if path.startswith('/for/'):
+                return campaign_reply50.handle_for(self, path[5:], sys.modules[__name__])
+            if path.startswith('/gift/'):
+                return campaign_reply50.handle_gift(self, path[6:], sys.modules[__name__])
+            if path in ('/thanks-question', '/thanks-question.html'):
+                return campaign_reply50.handle_thanks_question(self, u, sys.modules[__name__])
+            if path == '/api/reply-slots':
+                return campaign_reply50.handle_reply_slots(self, sys.modules[__name__])
+            if path in ('/admin', '/admin/questions'):
+                return campaign_reply50.handle_admin_questions(self, u, sys.modules[__name__])
             if path in ('/reading-room', '/reading-room.html'):
                 return self.handle_reading_room(u)
             if path == '/api/reading-room-data':
@@ -1201,8 +1192,8 @@ class Handler(BaseHTTPRequestHandler):
         if not stripe_key:
             return self.send(500, {'ok': False, 'error': 'Payment service is not configured'})
         origin = public_origin()
-        success_url = f"{origin}{download_path}?checkout_session_id={{CHECKOUT_SESSION_ID}}&paid=true"
-        cancel_url = f"{origin}/reading-room?t={urllib.parse.quote(token)}"
+        success_url = f"{origin}/thanks-question?s={{CHECKOUT_SESSION_ID}}&book={book_id}"
+        cancel_url = f"{origin}/for/{urllib.parse.quote(token)}" if token else f"{origin}/reading-room"
         params = {
             'payment_method_types[]': 'card',
             'mode': 'payment',
@@ -1211,8 +1202,9 @@ class Handler(BaseHTTPRequestHandler):
             'line_items[0][price]': price_id,
             'line_items[0][quantity]': '1',
             'customer_email': email,
-            'metadata[campaign]': 'reading_room_2026_10',
+            'metadata[campaign]': 'reply50_2026_10',
             'metadata[book_id]': book_id,
+            'metadata[token]': token,
         }
         now_ts = int(time.time())
         if exp >= now_ts + 1800:
@@ -1571,6 +1563,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200,{'ok':True,'checkout_url':cs_data.get('url'),'session_id':cs_data.get('id')})
             elif path=='/api/create-offer-checkout':
                 return self.handle_create_offer_checkout(body)
+            elif path == '/api/submit-reply-question':
+                return campaign_reply50.handle_submit_reply_question(self, body, sys.modules[__name__])
+            elif path == '/api/admin/mark-answered':
+                return campaign_reply50.handle_admin_mark_answered(self, body, u, sys.modules[__name__])
             elif path in ('/api/unsubscribe', '/unsubscribe'):
                 return self.handle_unsubscribe_post(body)
             elif path=='/api/plan-retry':

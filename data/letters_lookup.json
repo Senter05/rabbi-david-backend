@@ -1,0 +1,668 @@
+{
+  "iaparasiempre5@gmail.com": {
+    "id": "p001",
+    "email": "iaparasiempre5@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "A quiet word about money and peace",
+    "first_name": "Juan"
+  },
+  "s3nter05@gmail.com": {
+    "id": "p002",
+    "email": "s3nter05@gmail.com",
+    "lang": "es",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "Jos\u00e9, sobre lo que escribiste",
+    "first_name": "Jos\u00e9"
+  },
+  "nichosidentificar@gmail.com": {
+    "id": "p003",
+    "email": "nichosidentificar@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "A small word on peace and money",
+    "first_name": "Manuel"
+  },
+  "fcpremium189@gmail.com": {
+    "id": "p004",
+    "email": "fcpremium189@gmail.com",
+    "lang": "es",
+    "book_id": "morning",
+    "segment": "note",
+    "subject": "Carlos, sobre tu paz y tu prosperidad",
+    "first_name": "Carlos"
+  },
+  "alto.chapota@gmail.com": {
+    "id": "p005",
+    "email": "alto.chapota@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "A few words for a quiet morning",
+    "first_name": "Alto"
+  },
+  "davric112@gmail.com": {
+    "id": "p006",
+    "email": "davric112@gmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "answers",
+    "subject": "David, on a season of change",
+    "first_name": "David"
+  },
+  "kevinh.mia@gmail.com": {
+    "id": "p007",
+    "email": "kevinh.mia@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "A short letter on rest and money",
+    "first_name": "Kevin"
+  },
+  "fdavp9514@gmail.com": {
+    "id": "p008",
+    "email": "fdavp9514@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "Floyd, a letter about money and rest",
+    "first_name": "Floyd"
+  },
+  "kbeck62758@gmail.com": {
+    "id": "p009",
+    "email": "kbeck62758@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "Kathleen, a few words on peace",
+    "first_name": "Kathleen"
+  },
+  "euphoria.btsjk073@gmail.com": {
+    "id": "p010",
+    "email": "euphoria.btsjk073@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "Dharmi, on feeling overwhelmed",
+    "first_name": "Dharmi"
+  },
+  "pastored1199@gmail.com": {
+    "id": "p011",
+    "email": "pastored1199@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Pastor Edward, about church growth",
+    "first_name": "Edward"
+  },
+  "edmondst563@gmail.com": {
+    "id": "p012",
+    "email": "edmondst563@gmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "Todd, about what you wish to learn",
+    "first_name": "Todd"
+  },
+  "arisefm97.1@gmail.com": {
+    "id": "p013",
+    "email": "arisefm97.1@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Nathanael, your goals and your week",
+    "first_name": "Nathanael"
+  },
+  "shintetbait@gmail.com": {
+    "id": "p014",
+    "email": "shintetbait@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Kristy, about the privacy you need",
+    "first_name": "Kristy"
+  },
+  "israel@candelp.com": {
+    "id": "p015",
+    "email": "israel@candelp.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "answers",
+    "subject": "Israel, for the work of your hands",
+    "first_name": "Isra"
+  },
+  "gillian_wood@hotmail.com": {
+    "id": "p016",
+    "email": "gillian_wood@hotmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "A word for the hours you carry alone",
+    "first_name": "Gillian"
+  },
+  "william.e.combs@comcast.net": {
+    "id": "p017",
+    "email": "william.e.combs@comcast.net",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "William, about your years of study",
+    "first_name": "William"
+  },
+  "olav.gabrielsen@outlook.com": {
+    "id": "p018",
+    "email": "olav.gabrielsen@outlook.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "Olav, on doing well and believing",
+    "first_name": "Olav"
+  },
+  "phoshoko.hope16@gmail.com": {
+    "id": "p019",
+    "email": "phoshoko.hope16@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "A word for the hard months",
+    "first_name": ""
+  },
+  "temsusenla74@gmail.com": {
+    "id": "p020",
+    "email": "temsusenla74@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "Temsu, about you and your son",
+    "first_name": "Temsu"
+  },
+  "anikie26@gmail.com": {
+    "id": "p021",
+    "email": "anikie26@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "Annah, while you wait",
+    "first_name": "Annah"
+  },
+  "unogwuwil@gmail.com": {
+    "id": "p022",
+    "email": "unogwuwil@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "answers",
+    "subject": "Wilson, on choices and energy",
+    "first_name": "Wilson"
+  },
+  "kevinkingsley18@gmail.com": {
+    "id": "p023",
+    "email": "kevinkingsley18@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "A word for a waiting season",
+    "first_name": "Kevin"
+  },
+  "wishida1441@gmail.com": {
+    "id": "p024",
+    "email": "wishida1441@gmail.com",
+    "lang": "en",
+    "book_id": "legacy",
+    "segment": "note",
+    "subject": "Theresa, about the home you share",
+    "first_name": "Theresa"
+  },
+  "jennydelgado0614@gmail.com": {
+    "id": "p025",
+    "email": "jennydelgado0614@gmail.com",
+    "lang": "en",
+    "book_id": "protection",
+    "segment": "note",
+    "subject": "Jenny, a plan for paying off debt",
+    "first_name": "Jenny"
+  },
+  "ryansobers45@gmail.com": {
+    "id": "p026",
+    "email": "ryansobers45@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "Before the day gets loud, Ryan",
+    "first_name": "Ryan"
+  },
+  "tom1948connell@gmail.com": {
+    "id": "p027",
+    "email": "tom1948connell@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "answers",
+    "subject": "Your work, Tom, and what it asks of you",
+    "first_name": "Thomas"
+  },
+  "donnamepps@yahoo.com": {
+    "id": "p028",
+    "email": "donnamepps@yahoo.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "Donna, peace in the in-between",
+    "first_name": "Donna"
+  },
+  "olivetjones@felicitygroup.com": {
+    "id": "p029",
+    "email": "olivetjones@felicitygroup.com",
+    "lang": "en",
+    "book_id": "protection",
+    "segment": "note",
+    "subject": "The many bills, Olivet",
+    "first_name": "Olivet"
+  },
+  "sjoiner711@gmail.com": {
+    "id": "p030",
+    "email": "sjoiner711@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "A calm place to begin, Suprena",
+    "first_name": "Suprena"
+  },
+  "niiobkoby79@gmail.com": {
+    "id": "p031",
+    "email": "niiobkoby79@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "answers",
+    "subject": "Henry, purpose and the next honest step",
+    "first_name": "Henry"
+  },
+  "varghese358@gmail.com": {
+    "id": "p032",
+    "email": "varghese358@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "note",
+    "subject": "A relaxed, peaceful life, Varghese",
+    "first_name": "Varghese"
+  },
+  "laislapereira@icloud.com": {
+    "id": "p033",
+    "email": "laislapereira@icloud.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "A new relationship with money, Ish",
+    "first_name": "Ish"
+  },
+  "omahlall55@gmail.com": {
+    "id": "p034",
+    "email": "omahlall55@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "Your days and their rhythm, Omah",
+    "first_name": "Omah"
+  },
+  "rusilatilasaumitamana@gmail.com": {
+    "id": "p035",
+    "email": "rusilatilasaumitamana@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "A quiet word, Rusila",
+    "first_name": "Rusila"
+  },
+  "lopinotnunez@hotmail.com": {
+    "id": "p036",
+    "email": "lopinotnunez@hotmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "The blocked path, David",
+    "first_name": "David"
+  },
+  "timothytime2628@gmail.com": {
+    "id": "p037",
+    "email": "timothytime2628@gmail.com",
+    "lang": "en",
+    "book_id": "protection",
+    "segment": "note",
+    "subject": "Debts, children and the years ahead, Timothy",
+    "first_name": "Timothy"
+  },
+  "dahvad@yahoo.com": {
+    "id": "p038",
+    "email": "dahvad@yahoo.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "Sarah, about the hard year you describe",
+    "first_name": "Sarah"
+  },
+  "boatengdonald50@gmail.com": {
+    "id": "p039",
+    "email": "boatengdonald50@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "Emmanuel, a calm first hour",
+    "first_name": "Emmanuel"
+  },
+  "projectized@gmail.com": {
+    "id": "p040",
+    "email": "projectized@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "note",
+    "subject": "Challenges that look impossible, Richard",
+    "first_name": "Richard"
+  },
+  "samgoldheart@gmail.com": {
+    "id": "p041",
+    "email": "samgoldheart@gmail.com",
+    "lang": "en",
+    "book_id": "protection",
+    "segment": "note",
+    "subject": "Oluwaseyi, the money you have today",
+    "first_name": "Oluwaseyi"
+  },
+  "ecldoc@aol.com": {
+    "id": "p042",
+    "email": "ecldoc@aol.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "Evelyn, the seed you are planting",
+    "first_name": "Evelyn"
+  },
+  "oluwasogbeakintomide@gmail.com": {
+    "id": "p043",
+    "email": "oluwasogbeakintomide@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "empty",
+    "subject": "Something steady for this week, my friend",
+    "first_name": "Sogbe"
+  },
+  "mwokula@gmail.com": {
+    "id": "p044",
+    "email": "mwokula@gmail.com",
+    "lang": "en",
+    "book_id": "legacy",
+    "segment": "note",
+    "subject": "The land you are planting, Maureen",
+    "first_name": "Maureen"
+  },
+  "albertlogistics@gmail.com": {
+    "id": "p045",
+    "email": "albertlogistics@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "Albert, the weight you are carrying",
+    "first_name": "Albert"
+  },
+  "kudamoloko@gmail.com": {
+    "id": "p046",
+    "email": "kudamoloko@gmail.com",
+    "lang": "en",
+    "book_id": "protection",
+    "segment": "note",
+    "subject": "Kuda, the freedom you are asking for",
+    "first_name": "Kuda"
+  },
+  "fanimsw@gmail.com": {
+    "id": "p047",
+    "email": "fanimsw@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "Olufemi, the question of going home",
+    "first_name": "Olufemi"
+  },
+  "viewbinary@gmail.com": {
+    "id": "p048",
+    "email": "viewbinary@gmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "From scarcity toward abundance, Emeka",
+    "first_name": "Prince"
+  },
+  "pgyellah@icloud.com": {
+    "id": "p049",
+    "email": "pgyellah@icloud.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "Peter, I am sorry about your brother",
+    "first_name": "Peter"
+  },
+  "essmugai@gmail.com": {
+    "id": "p050",
+    "email": "essmugai@gmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "Esther, trusting while the path is unclear",
+    "first_name": "Esther"
+  },
+  "vransom7@gmail.com": {
+    "id": "p051",
+    "email": "vransom7@gmail.com",
+    "lang": "en",
+    "book_id": "legacy",
+    "segment": "note",
+    "subject": "What was taken, Valerie",
+    "first_name": "Valerie"
+  },
+  "alexia.fingall@gmail.com": {
+    "id": "p052",
+    "email": "alexia.fingall@gmail.com",
+    "lang": "en",
+    "book_id": "legacy",
+    "segment": "note",
+    "subject": "The home where money is learned, Livia",
+    "first_name": "Livia"
+  },
+  "armeldaallen77@gmail.com": {
+    "id": "p053",
+    "email": "armeldaallen77@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Four words, and the work behind them, Armelda",
+    "first_name": "Armelda"
+  },
+  "rdewaldt@gmail.com": {
+    "id": "p054",
+    "email": "rdewaldt@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "I read your letter, Rose-Marie",
+    "first_name": "Rose"
+  },
+  "carmela.mk68@gmail.com": {
+    "id": "p055",
+    "email": "carmela.mk68@gmail.com",
+    "lang": "en",
+    "book_id": "protection",
+    "segment": "note",
+    "subject": "Two jobs and the debt, Carmela",
+    "first_name": "Carmela"
+  },
+  "subscriptions@drmarcusanthony.com": {
+    "id": "p056",
+    "email": "subscriptions@drmarcusanthony.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Your price and your value, Marcus",
+    "first_name": "Marcus"
+  },
+  "silmosehla@gmail.com": {
+    "id": "p057",
+    "email": "silmosehla@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "A quiet start, Silvie",
+    "first_name": "Silvie"
+  },
+  "smithamarie717@gmail.com": {
+    "id": "p058",
+    "email": "smithamarie717@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "Mornings for a new season, Marie",
+    "first_name": "Marie"
+  },
+  "butikhoele@gmail.com": {
+    "id": "p059",
+    "email": "butikhoele@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Tenders and a steady plan, Buti",
+    "first_name": "Buti"
+  },
+  "healmut77@gmail.com": {
+    "id": "p060",
+    "email": "healmut77@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Business with a clean hand, Leah",
+    "first_name": "Leah"
+  },
+  "sup3rdav3dar3d3vil@gmail.com": {
+    "id": "p061",
+    "email": "sup3rdav3dar3d3vil@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "note",
+    "subject": "Slow recovery, David",
+    "first_name": "David"
+  },
+  "sena.myrick@yahoo.com": {
+    "id": "p062",
+    "email": "sena.myrick@yahoo.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "You are heard, Sena",
+    "first_name": "Sena"
+  },
+  "winniemakau93@gmail.com": {
+    "id": "p063",
+    "email": "winniemakau93@gmail.com",
+    "lang": "en",
+    "book_id": "protection",
+    "segment": "note",
+    "subject": "Paycheck to paycheck, Winnie",
+    "first_name": "Winnie"
+  },
+  "liga79@gmail.com": {
+    "id": "p064",
+    "email": "liga79@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "crisis",
+    "subject": "You do not have to start alone, Edis",
+    "first_name": "Edis"
+  },
+  "missmonalita@gmail.com": {
+    "id": "p065",
+    "email": "missmonalita@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Before the business, Pauline",
+    "first_name": "Pauline"
+  },
+  "choosekarla@gmail.com": {
+    "id": "p066",
+    "email": "choosekarla@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "A steady income, Karla",
+    "first_name": "Karla"
+  },
+  "cmclarke777@gmail.com": {
+    "id": "p067",
+    "email": "cmclarke777@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "Your welcome, Cecelia",
+    "first_name": "Cecelia"
+  },
+  "kaymaele@gmail.com": {
+    "id": "p068",
+    "email": "kaymaele@gmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "Your vision and your trust, Mamothupi",
+    "first_name": "Mamothupi"
+  },
+  "loveadepoju5@gmail.com": {
+    "id": "p069",
+    "email": "loveadepoju5@gmail.com",
+    "lang": "en",
+    "book_id": "ceo",
+    "segment": "note",
+    "subject": "A new beginning, Theresa",
+    "first_name": "Theresa"
+  },
+  "irakozearnaudibrahim@gmail.com": {
+    "id": "p070",
+    "email": "irakozearnaudibrahim@gmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "Clearing the mirror, Irakoze",
+    "first_name": "Irakoze"
+  },
+  "bbdfw11@gmail.com": {
+    "id": "p071",
+    "email": "bbdfw11@gmail.com",
+    "lang": "en",
+    "book_id": "protection",
+    "segment": "answers",
+    "subject": "The years ahead, Bruce",
+    "first_name": "Bruce"
+  },
+  "royalcatty93@gmail.com": {
+    "id": "p072",
+    "email": "royalcatty93@gmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "Repairing the vessel, my friend",
+    "first_name": ""
+  },
+  "as.stmarys.qac@gmail.com": {
+    "id": "p073",
+    "email": "as.stmarys.qac@gmail.com",
+    "lang": "en",
+    "book_id": "rituals",
+    "segment": "note",
+    "subject": "The oil and the waiting, YaYa",
+    "first_name": "YaYa"
+  },
+  "siambitom@gmail.com": {
+    "id": "p074",
+    "email": "siambitom@gmail.com",
+    "lang": "en",
+    "book_id": "morning",
+    "segment": "answers",
+    "subject": "Quiet mornings, Tom",
+    "first_name": "Tom"
+  }
+}

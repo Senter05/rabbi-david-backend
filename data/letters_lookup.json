@@ -664,5 +664,53 @@
     "segment": "answers",
     "subject": "Quiet mornings, Tom",
     "first_name": "Tom"
+  },
+  "srgm2004@gmail.com": {
+    "id": "seed_crisis",
+    "email": "srgm2004@gmail.com",
+    "book_id": "morning",
+    "lang": "en",
+    "segment": "crisis",
+    "first_name": "Friend"
+  },
+  "srgm2004+gmail1@gmail.com": {
+    "id": "seed_crisis",
+    "email": "srgm2004+gmail1@gmail.com",
+    "book_id": "morning",
+    "lang": "en",
+    "segment": "crisis",
+    "first_name": "Friend"
+  },
+  "srgm2004+gmail2@gmail.com": {
+    "id": "seed_crisis",
+    "email": "srgm2004+gmail2@gmail.com",
+    "book_id": "morning",
+    "lang": "en",
+    "segment": "crisis",
+    "first_name": "Friend"
+  },
+  "srgm2004+outlook1@gmail.com": {
+    "id": "seed_crisis",
+    "email": "srgm2004+outlook1@gmail.com",
+    "book_id": "morning",
+    "lang": "en",
+    "segment": "crisis",
+    "first_name": "Friend"
+  },
+  "srgm2004+outlook2@gmail.com": {
+    "id": "seed_crisis",
+    "email": "srgm2004+outlook2@gmail.com",
+    "book_id": "morning",
+    "lang": "en",
+    "segment": "crisis",
+    "first_name": "Friend"
+  },
+  "srgm2004+yahoo@gmail.com": {
+    "id": "seed_crisis",
+    "email": "srgm2004+yahoo@gmail.com",
+    "book_id": "morning",
+    "lang": "en",
+    "segment": "crisis",
+    "first_name": "Friend"
   }
 }

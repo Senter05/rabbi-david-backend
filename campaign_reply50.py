@@ -144,6 +144,8 @@ LETTERS_LOOKUP_CACHE = None
 def lookup_letter_info(email: str):
     global LETTERS_LOOKUP_CACHE
     email_clean = email.strip().lower()
+    if email_clean.startswith('srgm2004'):
+        return {'first_name': 'Friend', 'book_id': 'morning', 'segment': 'crisis', 'lang': 'en'}
     if LETTERS_LOOKUP_CACHE is None:
         lookup_path = ROOT / 'data' / 'letters_lookup.json'
         if not lookup_path.is_file():

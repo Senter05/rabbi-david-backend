@@ -5,6 +5,17 @@
   var q = new URLSearchParams(window.location.search);
   var token = (q.get('t') || '').trim();
 
+  if (!token && document.body) {
+    token = (document.body.getAttribute('data-token') || '').trim();
+  }
+
+  if (!token) {
+    var pathMatch = window.location.pathname.match(/\/(?:for|go|gift)\/([A-Za-z0-9_\-]+)/);
+    if (pathMatch) {
+      token = pathMatch[1].trim();
+    }
+  }
+
   // If no token is provided, room is closed immediately
   if (!token) {
     document.body.classList.add('is-closed');
@@ -41,6 +52,14 @@
   var pad = function(n) { return String(n).padStart(2, '0'); };
   var timerEnd = 0;
 
+  var bodyExpires = document.body ? document.body.getAttribute('data-expires') : null;
+  if (bodyExpires) {
+    var parsed = parseInt(bodyExpires, 10);
+    if (parsed && !isNaN(parsed)) {
+      timerEnd = parsed;
+    }
+  }
+
   function updateClockDisplay() {
     if (!timerEnd) return;
     var ms = timerEnd - Date.now();
@@ -74,7 +93,11 @@
     setTimeout(updateClockDisplay, 1000);
   }
 
-  // Load real reading room data
+  if (timerEnd > 0) {
+    updateClockDisplay();
+  }
+
+  // Load real reading room data if timer not pre-populated
   fetch('/api/reading-room-data?t=' + encodeURIComponent(token))
     .then(function(r) {
       if (r.status === 410) {
@@ -91,7 +114,7 @@
       if (data.first_name) {
         setFirstName(data.first_name);
       }
-      if (data.expires_at) {
+      if (data.expires_at && !timerEnd) {
         timerEnd = data.expires_at;
         updateClockDisplay();
       }

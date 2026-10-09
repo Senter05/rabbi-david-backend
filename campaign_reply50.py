@@ -338,14 +338,6 @@ def render_personal_reading_room_html(token, email, first_name, book_id, expires
 <title>Chosen for you, {first_name} · Rabbi David</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script>
-window.RR_CONFIG = {{
-  token: "{token}",
-  email: "{email}",
-  bookId: "{personal_book['id']}",
-  expiresAt: {expires_at * 1000}
-}};
-</script>
 <script src="/js/reading-room.js" defer></script>
 <style>
 :root{{
@@ -446,7 +438,7 @@ body.is-closed .closed{{display:block}}
 }}
 </style>
 </head>
-<body>
+<body data-token="{token}" data-email="{email}" data-book="{personal_book['id']}" data-expires="{expires_at * 1000}">
 
 <div class="bar open-only">Private reader's pricing · closes Sunday, Oct 11 · <b id="bar-clock">--:--:--</b></div>
 
@@ -602,7 +594,7 @@ def render_thanks_question_html(session_id: str, email: str, name: str, book_id:
           <h2 class="serif" style="font-size:24px; color:#18233a; margin-bottom:8px;">Ask Rabbi David Your 1 or 2 Quiet Questions</h2>
           <p style="font-size:14.5px; color:#6b6157; margin-bottom:16px;">As promised in the letter, Rabbi David will personally read and reply to your question by email within seven days.</p>
           
-          <form id="replyForm" onsubmit="submitQuestion(event)">
+          <form id="replyForm">
             <input type="hidden" name="session_id" value="{session_id}">
             <textarea id="questionText" name="question" rows="5" maxlength="600" required placeholder="Write your quiet questions here (about family, work, debt, or daily blessing)..." style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:12px; font:15px Inter,sans-serif; resize:vertical; box-sizing:border-box;"></textarea>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
@@ -612,52 +604,7 @@ def render_thanks_question_html(session_id: str, email: str, name: str, book_id:
           </form>
           <div id="formMsg" style="display:none; margin-top:14px; font-size:14.5px; font-weight:500;"></div>
         </div>
-        <script>
-        var qEl = document.getElementById('questionText');
-        var cEl = document.getElementById('charCount');
-        if (qEl) {{
-          qEl.addEventListener('input', function() {{
-            cEl.textContent = qEl.value.length + ' / 600 characters';
-          }});
-        }}
-        function submitQuestion(e) {{
-          e.preventDefault();
-          var btn = document.getElementById('submitBtn');
-          var msg = document.getElementById('formMsg');
-          var text = qEl.value.trim();
-          if (!text) return;
-          btn.disabled = true;
-          btn.textContent = 'Submitting...';
-          fetch('/api/submit-reply-question', {{
-            method: 'POST',
-            headers: {{ 'Content-Type': 'application/json' }},
-            body: JSON.stringify({{ session_id: '{session_id}', question: text }})
-          }})
-          .then(function(r) {{ return r.json(); }})
-          .then(function(data) {{
-            if (data.ok) {{
-              msg.style.display = 'block';
-              msg.style.color = '#166534';
-              msg.textContent = '✓ ' + (data.message || 'Your question has been received. Rabbi David will reply within seven days.');
-              qEl.disabled = true;
-              btn.style.display = 'none';
-            }} else {{
-              msg.style.display = 'block';
-              msg.style.color = '#991b1b';
-              msg.textContent = 'Error: ' + (data.error || 'Could not submit question.');
-              btn.disabled = false;
-              btn.textContent = 'Submit Your Question';
-            }}
-          }})
-          .catch(function(err) {{
-            msg.style.display = 'block';
-            msg.style.color = '#991b1b';
-            msg.textContent = 'Network error: ' + err.message;
-            btn.disabled = false;
-            btn.textContent = 'Submit Your Question';
-          }});
-        }}
-        </script>
+        <script src="/js/thanks-question.js" defer></script>
         """
     else:
         form_content = """
@@ -709,7 +656,7 @@ def render_admin_dashboard_html(questions, slots_count, admin_key):
     for q in questions:
         created_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(q['created']))
         badge_style = "background:#fef3c7; color:#92400e;" if q['status'] == 'pending' else "background:#d1fae5; color:#065f46;"
-        action_html = f"""<button onclick="markAnswered('{q['id']}')" style="background:#18233a; color:#fff; border:0; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">Mark Answered</button>""" if q['status'] == 'pending' else "<span style='color:#059669; font-size:12px;'>✓ Completed</span>"
+        action_html = f"""<button class="btn-mark-answered" data-id="{q['id']}" data-key="{admin_key}" style="background:#18233a; color:#fff; border:0; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">Mark Answered</button>""" if q['status'] == 'pending' else "<span style='color:#059669; font-size:12px;'>✓ Completed</span>"
 
         rows_html += f"""
         <tr style="border-bottom:1px solid #e5e7eb;">
@@ -738,22 +685,7 @@ body{{background:#f9fafb;color:#111827;font:14px/1.5 Inter,sans-serif;margin:0;p
 table{{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}}
 th{{background:#f3f4f6;text-align:left;padding:12px 10px;font-size:12px;font-weight:600;text-transform:uppercase;color:#4b5563;letter-spacing:0.5px}}
 </style>
-<script>
-function markAnswered(id) {{
-  if (!confirm('Mark question as answered?')) return;
-  fetch('/api/admin/mark-answered', {{
-    method: 'POST',
-    headers: {{ 'Content-Type': 'application/json' }},
-    body: JSON.stringify({{ id: id, key: '{admin_key}' }})
-  }})
-  .then(function(r) {{ return r.json(); }})
-  .then(function(d) {{
-    if (d.ok) location.reload();
-    else alert('Error: ' + d.error);
-  }})
-  .catch(function(err) {{ alert('Error: ' + err.message); }});
-}}
-</script>
+<script src="/js/admin.js" defer></script>
 </head>
 <body>
 <div class="wrap">

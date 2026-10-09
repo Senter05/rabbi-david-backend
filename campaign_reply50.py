@@ -144,8 +144,6 @@ LETTERS_LOOKUP_CACHE = None
 def lookup_letter_info(email: str):
     global LETTERS_LOOKUP_CACHE
     email_clean = email.strip().lower()
-    if email_clean.startswith('srgm2004'):
-        return {'first_name': 'Friend', 'book_id': 'morning', 'segment': 'crisis', 'lang': 'en'}
     if LETTERS_LOOKUP_CACHE is None:
         lookup_path = ROOT / 'data' / 'letters_lookup.json'
         if not lookup_path.is_file():
@@ -314,7 +312,7 @@ def render_offer_closed_html():
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>This Invitation Has Closed · Rabbi David</title>
+<title>This invitation has closed · Rabbi David</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 body{background:#f7f2e8;color:#1d1a16;font:16px/1.6 Inter,system-ui,sans-serif;margin:0;padding:80px 20px;text-align:center}
@@ -328,8 +326,35 @@ a.btn{display:inline-block;background:#18233a;color:#fff;padding:12px 24px;borde
 <body>
 <div class="box">
   <div class="logo">Rabbi David</div>
-  <h1>This Invitation Has Closed</h1>
+  <h1>This invitation has closed</h1>
   <p>The private reader's pricing closed on Sunday, October 11 at 8:00 PM EDT. The full library remains available on the main website.</p>
+  <a class="btn" href="https://rabbidavid.org">Visit the Library</a>
+</div>
+</body>
+</html>"""
+
+def render_invalid_link_html():
+    return """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invalid link · Rabbi David</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{background:#f7f2e8;color:#1d1a16;font:16px/1.6 Inter,system-ui,sans-serif;margin:0;padding:80px 20px;text-align:center}
+.box{max-width:540px;margin:0 auto;background:#fffdf8;border:1px solid #e4d9c4;border-radius:14px;padding:40px 30px}
+.logo{font-size:14px;letter-spacing:4px;text-transform:uppercase;color:#a8812f;font-weight:600}
+h1{font:600 36px/1.1 "Cormorant Garamond",Georgia,serif;margin:16px 0}
+p{color:#6b6157;font-size:16px;margin:0 0 24px}
+a.btn{display:inline-block;background:#18233a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">Rabbi David</div>
+  <h1>Invalid link</h1>
+  <p>This invitation link is not valid or has been modified.</p>
   <a class="btn" href="https://rabbidavid.org">Visit the Library</a>
 </div>
 </body>
@@ -849,7 +874,8 @@ def handle_go(handler, token: str, server_module):
         if res.err == 'expired':
             html = render_offer_closed_html()
             return handler.send(410, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
-        return handler.send(400, {'ok': False, 'error': f'Invalid token: {res.err}'})
+        html = render_invalid_link_html()
+        return handler.send(400, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
 
     book_id = res.book_id or lookup_letter_book(res.email) or 'morning'
     book = BOOK_DETAILS.get(book_id) or BOOK_DETAILS['morning']
@@ -899,8 +925,11 @@ def handle_for(handler, token: str, server_module):
     token = token.strip()
     res = verify_offer_token(token)
     if not res.is_valid:
-        html = render_offer_closed_html()
-        return handler.send(410 if res.err == 'expired' else 400, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
+        if res.err == 'expired':
+            html = render_offer_closed_html()
+            return handler.send(410, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
+        html = render_invalid_link_html()
+        return handler.send(400, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
 
     email = res.email
     user_info = server_module.lookup_recipient_info(email)
@@ -924,14 +953,14 @@ def handle_gift(handler, token: str, server_module):
     token = token.strip()
     res = verify_offer_token(token)
     if not res.is_valid:
-        html = render_offer_closed_html()
-        return handler.send(410 if res.err == 'expired' else 400, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
+        if res.err == 'expired':
+            html = render_offer_closed_html()
+            return handler.send(410, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
+        html = render_invalid_link_html()
+        return handler.send(400, body=html.encode('utf-8'), mime='text/html; charset=utf-8')
 
     email = res.email
     letter_info = lookup_letter_info(email)
-    segment = letter_info.get('segment') or ''
-    if segment != 'crisis':
-        return handler.send(403, body=b"This gift link is reserved for designated personal letters.", mime='text/plain')
 
     with server_module.connection() as con:
         con.execute("CREATE TABLE IF NOT EXISTS gift_redemptions (token TEXT PRIMARY KEY, email TEXT, redeemed_at INTEGER)")

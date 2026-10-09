@@ -233,12 +233,33 @@ def init_campaign_tables(server_module):
             ''')
             con.commit()
 
+def get_supabase_client(server_module):
+    sb = getattr(server_module, 'SUPABASE', None)
+    if sb and getattr(sb, 'configured', False):
+        return sb
+    cfg = getattr(server_module, 'CONFIG', None)
+    if not cfg:
+        try:
+            cfg_path = Path(__file__).resolve().parent / "config.json"
+            if cfg_path.exists():
+                cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    if cfg and hasattr(server_module, 'SupabaseClient'):
+        try:
+            client = server_module.SupabaseClient(cfg)
+            if client.is_configured():
+                return client
+        except Exception:
+            pass
+    return None
+
 def get_reply_slots_count(server_module, campaign='reply50_2026_10'):
     # Check Supabase if configured
     try:
-        sb = server_module.SupabaseClient()
-        if sb.is_configured():
-            res = sb._request(f'/rest/v1/sessions?user_id=eq.campaign:{campaign}&select=id', use_service_key=True)
+        sb = get_supabase_client(server_module)
+        if sb:
+            res = sb._request(f'/rest/v1/sessions?user_id=eq.campaign:{campaign}&select=id', method='GET', use_service_key=True)
             if res.get('status') == 200 and isinstance(res.get('data'), list):
                 return len(res['data'])
     except Exception as e:
@@ -272,8 +293,8 @@ def reserve_reply_slot(server_module, email: str, session_id: str, order_id: str
 
     # Sync to Supabase
     try:
-        sb = server_module.SupabaseClient()
-        if sb.is_configured():
+        sb = get_supabase_client(server_module)
+        if sb:
             sb._request('/rest/v1/sessions', method='POST', data={
                 'id': f'slot:{session_id}',
                 'user_id': f'campaign:{campaign}',
@@ -927,8 +948,8 @@ def handle_gift(handler, token: str, server_module):
             con.commit()
 
     try:
-        sb = server_module.SupabaseClient()
-        if sb.is_configured():
+        sb = get_supabase_client(server_module)
+        if sb:
             sb._request('/rest/v1/sessions', method='POST', data={
                 'id': f'gift:{token}',
                 'user_id': 'gift:reply50_2026_10',
@@ -1023,8 +1044,8 @@ def handle_submit_reply_question(handler, body, server_module):
             con.commit()
 
     try:
-        sb = server_module.SupabaseClient()
-        if sb.is_configured():
+        sb = get_supabase_client(server_module)
+        if sb:
             sb._request('/rest/v1/sessions', method='POST', data={
                 'id': f'q:{session_id}',
                 'user_id': 'question:reply50_2026_10',
@@ -1059,10 +1080,7 @@ def handle_admin_questions(handler, u, server_module):
             created INTEGER, answered_at INTEGER
         )''')
         rows = con.execute("SELECT id, email, name, question, session_id, status, created, answered_at FROM reply_questions ORDER BY created DESC").fetchall()
-        con.execute('''CREATE TABLE IF NOT EXISTS reply_slots (
-            id TEXT PRIMARY KEY, campaign TEXT, email TEXT UNIQUE,
-            session_id TEXT, order_id TEXT, created INTEGER)''')
-        slots_count = con.execute("SELECT COUNT(DISTINCT email) FROM reply_slots WHERE campaign='reply50_2026_10'").fetchone()[0]
+        slots_count = get_reply_slots_count(server_module)
 
     questions = []
     for r in rows:

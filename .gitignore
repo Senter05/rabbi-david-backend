@@ -9,3 +9,6 @@ evidence/
 .env.*
 config.json
 !config.example.json
+
+# Covenant audios and ZIP live in Supabase (private bucket covenant-private/covenant/); local copy for dev only
+private_assets/

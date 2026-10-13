@@ -400,6 +400,275 @@ EBOOK_DELIVERY = {
     }
 }
 
+# Covenant of Provision (covenant.html). Amounts in cents go through price_data: no Stripe Price objects.
+# Buyers get a private page (/download/covenant.html?session_id=cs_...) whose file links are HMAC-signed and expire.
+# Files are served from ebooks/ or private_assets/covenant/ when present, otherwise via a short-lived Supabase signed URL
+# (private bucket covenant-private, prefix covenant/). A wrong book is never delivered by the amount fallback.
+COVENANT_BONUS_FILES = EBOOK_DELIVERY['bundle_all']['files']
+COVENANT_PRODUCTS = {
+    'covenant_7day': {
+        'amount': 2200,
+        'title': 'The 7-Day Command Over Money',
+        'stripe_name': 'The 7-Day Command Over Money — Rabbi David',
+        'core': ['The-7-Day-Command-Over-Money.pdf'],
+        'bonus': [],
+        'audios': False,
+        'download': '/covenant-thanks.html',
+    },
+    'covenant_complete': {
+        'amount': 9200,
+        'title': 'The Complete Covenant of Provision',
+        'stripe_name': 'The Complete Covenant of Provision — Rabbi David',
+        'core': ['The-7-Day-Command-Over-Money.pdf', 'The-Complete-Covenant-of-Provision.pdf'],
+        'bonus': COVENANT_BONUS_FILES,
+        'audios': True,
+        'download': '/covenant-thanks.html',
+    },
+    'covenant_upgrade': {
+        'amount': 7000,
+        'title': 'The Complete Covenant of Provision',
+        'stripe_name': 'Upgrade to The Complete Covenant of Provision — Rabbi David',
+        'core': ['The-7-Day-Command-Over-Money.pdf', 'The-Complete-Covenant-of-Provision.pdf'],
+        'bonus': COVENANT_BONUS_FILES,
+        'audios': True,
+        'download': '/covenant-thanks.html',
+        'requires': 'covenant_7day',
+    },
+}
+COVENANT_PDF_TITLES = {
+    'The-7-Day-Command-Over-Money.pdf': 'The 7-Day Command Over Money',
+    'The-Complete-Covenant-of-Provision.pdf': 'The Complete Covenant of Provision (40 days)',
+    'The-Rabbis-Morning-Wealth-Blessing.pdf': "The Rabbi's Morning Wealth Blessing",
+    'The-7-Jewish-Money-Rituals.pdf': 'The 7 Jewish Money Rituals',
+    'The-Complete-Rabbis-Wealth-System.pdf': "The Complete Rabbi's Wealth System",
+    'Generational-Wealth-The-Torah-Method.pdf': 'Generational Wealth: The Torah Method',
+    'The-Torah-CEO-Code.pdf': 'The Torah CEO Code',
+    'The-Jewish-Wealth-Protection-Code.pdf': 'The Jewish Wealth Protection Code',
+}
+COVENANT_AUDIOS = [
+    'Modeh Ani — The Morning Decree', 'Psalm 23 — The LORD Is My Shepherd', 'Psalm 112 — The House of the Upright',
+    'Psalm 145 — Ashrei, the Open Hand', 'Psalm 91 — Under His Wings', 'The Manna Passage — Bread From Heaven',
+    'Psalm 121 — The Keeper', 'The Shield of Joseph', 'The Decree Against Debt', 'The Work of Our Hands',
+    'Psalms 67 and 100 — Thanksgiving', 'The Night Shema and Peace',
+]
+COVENANT_ZIP = 'Covenant-of-Provision-Audios.zip'
+COVENANT_BUCKET = 'covenant-private'  # private bucket; user-assets is public
+COVENANT_LINK_TTL = 6 * 3600
+COVENANT_LOCK = threading.RLock()
+GIFT_PDF = 'Day-1-The-Psalm-That-Opens-the-Door.pdf'
+CS_RE = re.compile(r'cs_(test|live)_[A-Za-z0-9]{10,200}')
+
+def covenant_file_table():
+    """file_id -> (local candidates, storage name, download filename, mime)."""
+    t = {}
+    for f in COVENANT_PDF_TITLES:
+        t['pdf:' + f] = ([ROOT / 'ebooks' / f], 'covenant/' + f, f, 'application/pdf')
+    for i, title in enumerate(COVENANT_AUDIOS, 1):
+        name = '%02d-covenant-audio.mp3' % i
+        nice = '%02d %s.mp3' % (i, re.sub(r'[^A-Za-z0-9 ,-]+', '', title.replace('—', '-')).replace('  ', ' ').strip())
+        t['audio:%02d' % i] = ([ROOT / 'private_assets' / 'covenant' / name], 'covenant/' + name, nice, 'audio/mpeg')
+    t['zip'] = ([ROOT / 'private_assets' / 'covenant' / COVENANT_ZIP], 'covenant/' + COVENANT_ZIP, COVENANT_ZIP, 'application/zip')
+    return t
+
+def covenant_files_ready(book_id):
+    return all((ROOT / 'ebooks' / f).is_file() for f in COVENANT_PRODUCTS[book_id]['core'])
+
+def covenant_order_for_session(session_id):
+    if not session_id: return None
+    with connection() as con:
+        return con.execute('SELECT * FROM orders WHERE session_id=?', (session_id,)).fetchone()
+
+def covenant_secret():
+    return (CONFIG.get('download_secret') or os.environ.get('DOWNLOAD_SECRET') or OFFER_HMAC_SECRET + ':covenant-files').encode()
+
+def covenant_sign(session_id, file_id, expires):
+    return hmac.new(covenant_secret(), f'{session_id}|{file_id}|{expires}'.encode(), hashlib.sha256).hexdigest()[:40]
+
+def covenant_link(session_id, file_id, now=None, download=False):
+    exp = int((now or time.time()) + COVENANT_LINK_TTL)
+    q = urllib.parse.urlencode({'s': session_id, 'f': file_id, 'e': exp, 'k': covenant_sign(session_id, file_id, exp)})
+    return '/api/covenant/file?' + q + ('&dl=1' if download else '')
+
+def covenant_verify_link(session_id, file_id, expires, sig):
+    try: exp = int(expires)
+    except (TypeError, ValueError): return False
+    if exp < time.time() or exp > time.time() + COVENANT_LINK_TTL + 60: return False
+    return hmac.compare_digest(covenant_sign(session_id, file_id, exp), str(sig or ''))
+
+def stripe_key():
+    return os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key') or ''
+
+def covenant_stripe_sync(session_id):
+    """Webhook not in yet: ask Stripe directly. Records and delivers a paid Covenant order exactly once."""
+    order = covenant_order_for_session(session_id)
+    if order: return order
+    key = stripe_key()
+    if not key or not CS_RE.fullmatch(session_id or ''): return None
+    try:
+        req = urllib.request.Request('https://api.stripe.com/v1/checkout/sessions/' + session_id, headers={'Authorization': 'Bearer ' + key})
+        with urllib.request.urlopen(req, timeout=15) as r: cs = json.loads(r.read())
+    except Exception as ex:
+        print(f"[COVENANT STRIPE VERIFY ERROR] {type(ex).__name__}", flush=True); return None
+    meta = cs.get('metadata') or {}
+    book_id = meta.get('book_id', '')
+    if cs.get('id') != session_id or cs.get('payment_status') != 'paid' or book_id not in COVENANT_PRODUCTS: return None
+    cust = cs.get('customer_details') or {}
+    email = cust.get('email') or cs.get('customer_email') or ''
+    if not email: return None
+    deliver_ebook('ord_' + session_id, email, cust.get('name') or 'Friend', book_id, session_id=session_id,
+                  amount=cs.get('amount_total', 0), currency=cs.get('currency', 'usd'))
+    return covenant_order_for_session(session_id)
+
+def covenant_access(session_id):
+    """Everything the private download page shows for one paid order, with fresh signed links."""
+    order = covenant_stripe_sync(session_id) if CS_RE.fullmatch(session_id or '') else None
+    if not order or order['book_id'] not in COVENANT_PRODUCTS: return None
+    info = COVENANT_PRODUCTS[order['book_id']]
+    def item(f):
+        return {'title': COVENANT_PDF_TITLES.get(f, f), 'file': f,
+                'url': covenant_link(session_id, 'pdf:' + f), 'download_url': covenant_link(session_id, 'pdf:' + f, download=True)}
+    out = {'verified': True, 'book_id': order['book_id'], 'title': info['title'], 'email': order['email'],
+           'delivery_status': order['delivery_status'], 'pdfs': [item(f) for f in info['core']],
+           'bonus': [item(f) for f in info['bonus']], 'audios': [], 'zip_url': None,
+           'expires_in': COVENANT_LINK_TTL}
+    if info['audios']:
+        out['audios'] = [{'n': i, 'title': t, 'url': covenant_link(session_id, 'audio:%02d' % i),
+                          'download_url': covenant_link(session_id, 'audio:%02d' % i, download=True)}
+                         for i, t in enumerate(COVENANT_AUDIOS, 1)]
+        out['zip_url'] = covenant_link(session_id, 'zip', download=True)
+    return out
+
+def covenant_allowed(book_id, file_id):
+    info = COVENANT_PRODUCTS.get(book_id)
+    if not info: return False
+    if file_id.startswith('pdf:'): return file_id[4:] in info['core'] + info['bonus']
+    return bool(info['audios']) and (file_id == 'zip' or re.fullmatch(r'audio:(0[1-9]|1[0-2])', file_id) is not None)
+
+def supabase_signed_url(storage_name, expires_in=3600, download_name=None):
+    if not (SUPABASE and SUPABASE.is_configured()): return None
+    try:
+        req = urllib.request.Request(f"{SUPABASE.url}/storage/v1/object/sign/{COVENANT_BUCKET}/{storage_name}",
+                                     data=json.dumps({'expiresIn': expires_in}).encode(), method='POST',
+                                     headers={'apikey': SUPABASE.service_key, 'Authorization': 'Bearer ' + SUPABASE.service_key, 'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=15) as r: signed = json.loads(r.read()).get('signedURL') or ''
+    except Exception as ex:
+        print(f"[COVENANT SIGN ERROR] {type(ex).__name__}", flush=True); return None
+    if not signed: return None
+    url = SUPABASE.url + '/storage/v1' + (signed if signed.startswith('/') else '/' + signed)
+    if download_name: url += '&download=' + urllib.parse.quote(download_name)
+    return url
+
+def first_name_of(name):
+    words = re.findall(r"[A-Za-zÀ-ÿ']+", name or '')
+    return words[0].capitalize() if words and len(words[0]) >= 2 and words[0].lower() not in ('valued', 'friend') else 'Friend'
+
+def mail_origin():
+    return (CONFIG.get('public_origin') or 'https://rabbidavid.org').rstrip('/')
+
+def covenant_email(order_id, email, name, book_id, session_id):
+    info = COVENANT_PRODUCTS[book_id]
+    origin = mail_origin()
+    link = f"{origin}/download/covenant.html?session_id={urllib.parse.quote(session_id)}" if session_id else f"{origin}/covenant.html"
+    message = EmailMessage()
+    message['To'] = email
+    message['From'] = CONFIG.get('mail_from') or 'Rabbi David <delivery@rabbidavid.org>'
+    message['Reply-To'] = CONFIG.get('reply_to') or CONFIG.get('support_email') or 'sentercompanyls@gmail.com'
+    message['Subject'] = f"Rabbi David | Your books: {info['title']}"
+    lines = [f"Shalom {first_name_of(name)},", "Thank you for your order. Your books are ready."]
+    if info['audios']:
+        lines.append("Your private page has everything in one place: the two books, the 12 audios read slowly by Rabbi David "
+                     "(play them on the page or download them all at once) and the 6 bonus books.")
+    else:
+        lines.append("The 7-Day Command Over Money is attached to this email. You can also download it from your private page.")
+    lines += ["Open your private download page here:", link,
+              "Keep this email: the link above is your personal access. Please do not share it.",
+              "The main books are also attached to this email as PDF files, yours to keep.",
+              "Need help? Simply reply to this email.", "With warmth,\nThe Rabbi David Team\nSenter Company LLC"]
+    message.set_content('\n\n'.join(lines))
+    add_email_html(message, 'covenant', origin)
+    total = 0
+    for f in info['core']:
+        path = ROOT / 'ebooks' / f
+        if path.is_file() and total + path.stat().st_size <= 25_000_000:
+            message.add_attachment(path.read_bytes(), maintype='application', subtype='pdf', filename=f)
+            total += path.stat().st_size
+    return message
+
+def save_local_outbox(name, message):
+    try:
+        (DATA / 'outbox').mkdir(exist_ok=True)
+        (DATA / 'outbox' / (re.sub(r'[^A-Za-z0-9_-]', '_', name) + '.eml')).write_bytes(message.as_bytes(policy=policy.SMTP))
+    except Exception:
+        pass
+
+def deliver_covenant(order_id, email, name, book_id, session_id='', amount=0, currency='usd'):
+    uid = None
+    with COVENANT_LOCK:
+        existing = covenant_order_for_session(session_id) if session_id else None
+        if existing and existing['delivery_status'] in ('sent', 'local_preview'):
+            return {'ok': True, 'status': existing['delivery_status'], 'provider_id': existing['provider_id'], 'book_id': existing['book_id'], 'duplicate': True}
+        message = covenant_email(order_id, email, name, book_id, session_id)
+        provider_id = None
+        if mail_configured():
+            try:
+                provider_id = mail_delivery.send(CONFIG, message, order_id); status = 'sent'
+            except Exception as e:
+                status = 'failed'; print(f"[COVENANT DELIVERY ERROR] order={order_id} error={e}", flush=True)
+        else:
+            status = 'local_preview'; save_local_outbox(order_id, message)
+        u = get_user_by_email(email); uid = u['id'] if u else None
+        with connection() as con:
+            con.execute("INSERT OR REPLACE INTO orders(id,session_id,email,book_id,amount,currency,created,delivery_status,provider_id,user_id) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                        (order_id, session_id, email, book_id, amount, currency, time.time(), status, provider_id, uid))
+    print(f"[COVENANT] order={order_id} book={book_id} delivery={status}", flush=True)
+    if SUPABASE and SUPABASE.is_configured():
+        try: POOL.submit(lambda: SUPABASE.upsert_order({'id': order_id, 'session_id': session_id, 'email': email, 'book_id': book_id, 'amount': amount, 'currency': currency, 'delivery_status': status, 'provider_id': provider_id, 'user_id': uid, 'created': time.time()}))
+        except Exception as ex: print(f"[SUPABASE COVENANT ORDER SYNC ERROR] {ex}", flush=True)
+    return {'ok': True, 'status': status, 'provider_id': provider_id, 'book_id': book_id}
+
+def gift_email(email, name):
+    origin = mail_origin()
+    message = EmailMessage()
+    message['To'] = email
+    message['From'] = CONFIG.get('mail_from') or 'Rabbi David <delivery@rabbidavid.org>'
+    message['Reply-To'] = CONFIG.get('reply_to') or CONFIG.get('support_email') or 'sentercompanyls@gmail.com'
+    message['Subject'] = 'Rabbi David | Your gift: Day 1, The Psalm That Opens the Door'
+    message.set_content('\n\n'.join([
+        f"Shalom {first_name_of(name)},",
+        "Here is your gift: Day 1 of The 7-Day Command Over Money. Psalm 112, its Hebrew phrase in large print and the first decree.",
+        "The PDF is attached to this email. You can also open it here:",
+        f"{origin}/pdf/{GIFT_PDF}",
+        "Read it slowly tonight, before you sleep. When you are ready for the other six days, they are waiting for you at " + origin + "/covenant.html",
+        "With warmth,\nThe Rabbi David Team",
+        "You received this email because you asked for the Day 1 gift on rabbidavid.org. To stop receiving letters: "
+        "https://rabbidavid.org/api/unsubscribe?e=" + urllib.parse.quote(email)]))
+    add_email_html(message, 'gift', origin)
+    path = ROOT / 'public' / 'pdf' / GIFT_PDF
+    if path.is_file():
+        message.add_attachment(path.read_bytes(), maintype='application', subtype='pdf', filename=GIFT_PDF)
+    return message
+
+def record_lead(email, name, source):
+    """Stores the lead and sends the Day 1 gift once per address. Returns the gift status."""
+    with connection() as con:
+        con.execute('CREATE TABLE IF NOT EXISTS leads(email TEXT PRIMARY KEY,name TEXT,source TEXT,created REAL,gift_status TEXT)')
+        con.execute('INSERT OR IGNORE INTO leads(email,name,source,created,gift_status) VALUES(?,?,?,?,?)', (email, name, source, time.time(), 'pending'))
+        row = con.execute('SELECT gift_status FROM leads WHERE email=?', (email,)).fetchone()
+    if row and row['gift_status'] in ('sent', 'local_preview'):
+        return row['gift_status']
+    message = gift_email(email, name)
+    mail_id = 'gift-' + hashlib.sha256(email.encode()).hexdigest()[:20]
+    if mail_configured():
+        try:
+            mail_delivery.send(CONFIG, message, mail_id); status = 'sent'
+        except Exception as e:
+            status = 'failed'; print(f"[GIFT DELIVERY ERROR] {e}", flush=True)
+    else:
+        status = 'local_preview'; save_local_outbox(mail_id, message)
+    with connection() as con:
+        con.execute('UPDATE leads SET gift_status=? WHERE email=?', (status, email))
+    return status
+
 OFFER_STRIPE_PRICES = {
     'legacy': ('price_1ULpxDQPUFXetkqGUJTb5kLA', 3200, "The 5 Laws of Ancient Jewish Wealth — Rabbi David", '/download/generational-wealth.html'),
     'protection': ('price_1ULpxEQPUFXetkqGvGXhXYJM', 3200, "The Jewish Shield Against Financial Ruin — Rabbi David", '/download/protection.html'),
@@ -505,6 +774,8 @@ def deliver_ebook(order_id, email, name, book_id, session_id='', amount=0, curre
     }
     if book_id in aliases:
         book_id = aliases[book_id]
+    if book_id in COVENANT_PRODUCTS:
+        return deliver_covenant(order_id, email, name, book_id, session_id=session_id, amount=amount, currency=currency)
     if not book_id or book_id not in EBOOK_DELIVERY:
         amount_map = {
             2200: 'morning', 2700: 'morning',
@@ -952,7 +1223,7 @@ class Handler(BaseHTTPRequestHandler):
     def headers_common(self,mime,cache='no-store'):
         self.send_header('Content-Type',mime);self.send_header('Cache-Control',cache)
         self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer')
-        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://rabbidavid.org; media-src 'self' blob:; connect-src 'self' https://api.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com")
+        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://rabbidavid.org; media-src 'self' blob: https://gkihlvkdkciqpkrhbunv.supabase.co; connect-src 'self' https://api.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com")
         origin=self.headers.get('Origin')
         if origin in origins(CONFIG,PORT):
             self.send_header('Access-Control-Allow-Origin',origin)
@@ -986,6 +1257,8 @@ class Handler(BaseHTTPRequestHandler):
             status=206
         self.send_response(status);self.headers_common(mime or mimetypes.guess_type(str(file))[0] or 'application/octet-stream',cache)
         self.send_header('Content-Length',str(max(0,end-start+1)));self.send_header('Accept-Ranges','bytes')
+        for k,v in (getattr(self,'_extra_headers',None) or {}).items():self.send_header(k,v)
+        self._extra_headers=None
         if not private:self.send_header('ETag',etag)
         if status==206:self.send_header('Content-Range',f'bytes {start}-{end}/{size}')
         self.end_headers()
@@ -1109,6 +1382,11 @@ class Handler(BaseHTTPRequestHandler):
                         con.execute('DELETE FROM access WHERE token=?',(hashed,))
                 if not r:return self.send(400,body=b'Your link has expired or was already used. Return to the website to request another.',mime='text/plain')
                 self.new_cookie=r['sid'];return self.send(303,body=b'',headers={'Location':'/result.html'})
+            if path=='/api/covenant/access':
+                qs=urllib.parse.parse_qs(u.query);cs=qs.get('session_id',[''])[0]
+                access=covenant_access(cs)
+                return self.send(200,access) if access else self.send(200 if CS_RE.fullmatch(cs or '') else 400,{'verified':False,'status':'processing' if CS_RE.fullmatch(cs or '') else 'invalid'})
+            if path=='/api/covenant/file':return self.handle_covenant_file(u)
             if path=='/api/download-verify':
                 return self.handle_download_verify(u)
             if path=='/api/checkout-verify':
@@ -1299,12 +1577,31 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f"[STRIPE WEBHOOK ERROR] {e}",flush=True)
             return self.send(400,{'error':'Webhook processing error'})
+    def handle_covenant_file(self,u):
+        qs=urllib.parse.parse_qs(u.query);g=lambda k:qs.get(k,[''])[0]
+        cs,file_id=g('s'),g('f')
+        if not CS_RE.fullmatch(cs) or not covenant_verify_link(cs,file_id,g('e'),g('k')):
+            return self.send(403,{'error':'This download link has expired. Please reopen your download page.'})
+        order=covenant_order_for_session(cs)
+        if not order or not covenant_allowed(order['book_id'],file_id):return self.send(403,{'error':'Not available for this order.'})
+        entry=covenant_file_table().get(file_id)
+        if not entry:return self.send(404,{'error':'Not found'})
+        local,storage_name,nice,mime=entry
+        disp=('attachment' if g('dl') else 'inline')+'; filename="'+nice.replace('"','')+'"'
+        for f in local:
+            if f.is_file():
+                self._extra_headers={'Content-Disposition':disp,'X-Robots-Tag':'noindex'}
+                return self.send_file(f,mime=mime,private=True)
+        signed=supabase_signed_url(storage_name,3600,nice if g('dl') else None)
+        if signed:return self.send(302,body=b'',headers={'Location':signed,'Cache-Control':'no-store'})
+        return self.send(503,{'error':'This file is being prepared. Please try again in a few minutes.'})
     def handle_download_verify(self,u):
         qs=urllib.parse.parse_qs(u.query)
         session_id=qs.get('session_id',[''])[0]
         if not session_id:return self.send(400,{'error':'Missing session_id'})
         with connection() as con:
             order=con.execute("SELECT * FROM orders WHERE session_id=?",(session_id,)).fetchone()
+        if not order and CS_RE.fullmatch(session_id):order=covenant_stripe_sync(session_id)
         if order:
             return self.send(200,{'verified':True,'email':order['email'],'book_id':order['book_id'],'delivery_status':order['delivery_status']})
         return self.send(200,{'verified':False,'status':'processing'})
@@ -1532,13 +1829,22 @@ class Handler(BaseHTTPRequestHandler):
                     'protection': (4900, "The Jewish Shield Against Financial Ruin — Rabbi David", '/download/protection.html'),
                     'bundle_all': (20000, "The Complete 6-Ebook Master Collection — Rabbi David", '/download/all-access.html')
                 }
+                for cid, cinfo in COVENANT_PRODUCTS.items():
+                    prices[cid] = (cinfo['amount'], cinfo['stripe_name'], cinfo['download'])
                 if book_id not in prices:raise ValueError(f'Unknown book: {book_id}')
                 unit_amount, prod_name, download_path = prices[book_id]
+                prior_session_id = ''
+                if book_id in COVENANT_PRODUCTS and COVENANT_PRODUCTS[book_id].get('requires'):
+                    prior_session_id = str(body.get('prior_session_id') or '')[:200]
+                    prior = covenant_order_for_session(prior_session_id) or (covenant_stripe_sync(prior_session_id) if CS_RE.fullmatch(prior_session_id) else None)
+                    if not prior or prior['book_id'] != COVENANT_PRODUCTS[book_id]['requires']:
+                        raise ValueError('This upgrade is only available right after buying The 7-Day Command Over Money.')
+                    if not body.get('email'): body['email'] = prior['email']
                 stripe_key=os.environ.get('STRIPE_SECRET_KEY') or CONFIG.get('stripe_secret_key')
                 if not stripe_key:raise ValueError('Stripe is not configured')
                 origin = public_origin()
                 success_url = f"{origin}{download_path}?checkout_session_id={{CHECKOUT_SESSION_ID}}&paid=true"
-                cancel_url = f"{origin}/#catalog"
+                cancel_url = f"{origin}/covenant.html#offers" if book_id in COVENANT_PRODUCTS else f"{origin}/#catalog"
                 user_email = body.get('email') or d.get('email') or (self.current_user() or {}).get('email') or ''
                 user_id = d.get('user_id') or (self.current_user() or {}).get('id') or ''
                 params={
@@ -1555,12 +1861,18 @@ class Handler(BaseHTTPRequestHandler):
                     'metadata[registered_email]':user_email,
                     'metadata[book_id]':book_id
                 }
+                if prior_session_id:params['metadata[prior_session_id]']=prior_session_id
                 if user_email:params['customer_email']=user_email
                 data=urllib.parse.urlencode(params).encode('utf-8')
                 req=urllib.request.Request('https://api.stripe.com/v1/checkout/sessions',data=data,headers={'Authorization':f'Bearer {stripe_key}'})
                 with urllib.request.urlopen(req,timeout=15) as r:
                     cs_data=json.loads(r.read())
                 return self.send(200,{'ok':True,'checkout_url':cs_data.get('url'),'session_id':cs_data.get('id')})
+            elif path=='/api/lead':
+                name,email=valid_identity(body.get('name') or 'Friend',body.get('email'))
+                source=str(body.get('source') or 'covenant')[:40]
+                gift=record_lead(email,name,source)
+                return self.send(200,{'ok':True,'gift_status':gift,'gift_url':'/pdf/'+GIFT_PDF,'message':'Thank you. Day 1: The Psalm That Opens the Door is on its way to '+email+'. You can also open it right now below.'})
             elif path=='/api/create-offer-checkout':
                 return self.handle_create_offer_checkout(body)
             elif path == '/api/submit-reply-question':

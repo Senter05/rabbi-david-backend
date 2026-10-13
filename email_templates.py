@@ -6,7 +6,8 @@ from urllib.parse import urlsplit
 ACTION_LABELS = {
     'access': 'Open my reading', 'password_reset': 'Choose a new password',
     'welcome': 'Open my account', 'plan': 'Open my reading',
-    'ebook': 'Download my book',
+    'ebook': 'Download my book', 'covenant': 'Open my download page',
+    'gift': 'Open Day 1',
 }
 
 
